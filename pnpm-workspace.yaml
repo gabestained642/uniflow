@@ -6,3 +6,4 @@ packages:
   - "cli"
   - "sdk/*"
   - "ui"
+  - "website"

@@ -1,0 +1,151 @@
+---
+---
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="/" class="footer-logo" aria-label="Uniflow home">
+          <svg width="100" height="24" viewBox="0 0 140 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="footer-grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#22d3ee"/>
+                <stop offset="100%" stop-color="#818cf8"/>
+              </linearGradient>
+            </defs>
+            <path d="M4 6v12a8 8 0 0 0 16 0V6" stroke="url(#footer-grad)" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <text x="28" y="22" font-family="Geist Sans, system-ui, sans-serif" font-size="18" font-weight="500" fill="currentColor" letter-spacing="-0.02em">
+              uni<tspan fill="url(#footer-grad)">flow</tspan>
+            </text>
+          </svg>
+        </a>
+        <p class="footer-tagline">Open-source Customer Data Platform for AWS.</p>
+      </div>
+
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4 class="footer-col-title">Product</h4>
+          <a href="#features" class="footer-link">Features</a>
+          <a href="#architecture" class="footer-link">Architecture</a>
+          <a href="/getting-started/quickstart" class="footer-link">Quick Start</a>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-col-title">Docs</h4>
+          <a href="/sdks/javascript" class="footer-link">JavaScript SDK</a>
+          <a href="/sdks/python" class="footer-link">Python SDK</a>
+          <a href="/api/events-api" class="footer-link">API Reference</a>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-col-title">Community</h4>
+          <a href="https://github.com/maroil/uniflow" class="footer-link" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/maroil/uniflow/blob/main/CONTRIBUTING.md" class="footer-link" target="_blank" rel="noopener">Contributing</a>
+          <a href="https://github.com/maroil/uniflow/blob/main/LICENSE" class="footer-link" target="_blank" rel="noopener">MIT License</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p class="footer-copy">&copy; {new Date().getFullYear()} Uniflow. MIT License.</p>
+      <p class="footer-built">Built with <a href="https://astro.build" target="_blank" rel="noopener">Astro</a></p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 4rem 1.5rem 2rem;
+  }
+
+  .footer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .footer-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 4rem;
+    margin-bottom: 3rem;
+  }
+
+  .footer-brand {
+    max-width: 280px;
+  }
+
+  .footer-logo {
+    display: inline-flex;
+    color: var(--text-primary);
+    text-decoration: none;
+    margin-bottom: 0.75rem;
+  }
+
+  .footer-tagline {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 4rem;
+  }
+
+  .footer-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .footer-col-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.25rem;
+  }
+
+  .footer-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.8125rem;
+    transition: color 0.2s ease;
+  }
+
+  .footer-link:hover {
+    color: var(--text-primary);
+  }
+
+  .footer-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .footer-copy, .footer-built {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+
+  .footer-built a {
+    color: var(--accent-cyan);
+    text-decoration: none;
+  }
+
+  @media (max-width: 768px) {
+    .footer-top {
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+    .footer-links {
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+    .footer-bottom {
+      flex-direction: column;
+      gap: 0.5rem;
+      text-align: center;
+    }
+  }
+</style>

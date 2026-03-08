@@ -32,6 +32,7 @@
     "libs/*",
     "cli",
     "sdk/*",
-    "ui"
+    "ui",
+    "website"
   ]
 }

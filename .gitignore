@@ -1,6 +1,7 @@
 node_modules
 dist
 .next
+.astro
 coverage
 cdk.out
 *.js.map

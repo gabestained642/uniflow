@@ -1,0 +1,39 @@
+---
+title: Connectors Overview
+description: Send processed events to external systems.
+---
+
+Connectors are destination plugins that forward events to external systems after they've been processed by the Uniflow pipeline.
+
+## How connectors work
+
+1. Events enter through the ingest API
+2. The stream processor validates, enriches, and writes to DynamoDB
+3. Events are fanned out to SQS — one queue per active destination
+4. A connector Lambda picks up events from SQS and delivers them
+
+Each connector runs as a separate Lambda function with its own SQS queue and dead-letter queue for reliability.
+
+## Built-in connectors
+
+| Connector | Description |
+|-----------|-------------|
+| [Webhook](/connectors/webhook) | HTTP POST with HMAC signature verification |
+| [S3 Export](/connectors/s3-export) | NDJSON export to any S3 bucket |
+
+## Custom connectors
+
+You can build custom connectors using the [Connector SDK](/connectors/connector-sdk). Publish them as npm packages following the `@uniflow/connector-<name>` convention.
+
+## Configuration
+
+Connectors are enabled in `uniflow.config.yaml`:
+
+```yaml
+connectors:
+  - webhook
+  - s3-export
+  - my-custom-connector
+```
+
+Individual connector configuration (URLs, API keys, etc.) is managed through the Admin UI or Management API.

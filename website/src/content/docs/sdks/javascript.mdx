@@ -1,0 +1,159 @@
+---
+title: JavaScript SDK
+description: Track events from browser and Node.js applications.
+---
+
+The `@uniflow/js` SDK works in both browser and Node.js environments. It batches events and flushes them automatically.
+
+## Installation
+
+```bash
+npm install @uniflow/js
+```
+
+## Quick start
+
+```typescript
+import { UnifowClient } from '@uniflow/js';
+
+const client = new UnifowClient({
+  writeKey: 'your_write_key',
+  host: 'https://your-ingest-endpoint.amazonaws.com',
+});
+
+// Track an event
+client.track({
+  event: 'Button Clicked',
+  userId: 'user_123',
+  properties: { button: 'signup', plan: 'pro' },
+});
+
+// Identify a user
+client.identify({
+  userId: 'user_123',
+  traits: { name: 'Jane Doe', email: 'jane@acme.com' },
+});
+```
+
+## Configuration
+
+```typescript
+const client = new UnifowClient({
+  writeKey: 'your_write_key',     // Required — from admin UI
+  host: 'https://...',            // Ingest endpoint URL
+  flushAt: 20,                    // Flush after N events (default: 20)
+  flushInterval: 10_000,          // Flush interval in ms (default: 10s)
+});
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `writeKey` | `string` | — | Source write key |
+| `host` | `string` | `https://ingest.uniflow.io` | Ingest API endpoint |
+| `flushAt` | `number` | `20` | Batch size before auto-flush |
+| `flushInterval` | `number` | `10000` | Auto-flush interval (ms) |
+
+## Methods
+
+### `track(options)`
+
+Record a user action or event.
+
+```typescript
+client.track({
+  event: 'Purchase Completed',      // Required
+  userId: 'user_123',               // Optional if anonymousId exists
+  anonymousId: 'anon_456',          // Auto-generated if omitted
+  properties: {                     // Optional
+    revenue: 99.99,
+    currency: 'USD',
+    product: 'Pro Plan',
+  },
+  timestamp: '2025-03-08T...',      // Optional — auto-set
+});
+```
+
+### `identify(options)`
+
+Associate traits with a known user.
+
+```typescript
+client.identify({
+  userId: 'user_123',               // Required
+  traits: {                         // Optional
+    name: 'Jane Doe',
+    email: 'jane@acme.com',
+    plan: 'pro',
+    company: 'Acme Inc',
+  },
+});
+```
+
+### `page(options?)`
+
+Record a page view. All parameters are optional.
+
+```typescript
+client.page({
+  name: 'Pricing',                  // Optional
+  userId: 'user_123',               // Optional
+  properties: {                     // Optional
+    url: 'https://acme.com/pricing',
+    title: 'Pricing - Acme',
+    referrer: 'https://google.com',
+  },
+});
+```
+
+### `group(options)`
+
+Associate a user with a group or account.
+
+```typescript
+client.group({
+  groupId: 'company_789',           // Required
+  userId: 'user_123',               // Optional
+  traits: {                         // Optional
+    name: 'Acme Inc',
+    industry: 'SaaS',
+    employees: 50,
+  },
+});
+```
+
+### `flush()`
+
+Manually flush all queued events. Returns a promise.
+
+```typescript
+await client.flush();
+```
+
+### `destroy()`
+
+Stop the flush timer and flush remaining events. Call this on app shutdown.
+
+```typescript
+client.destroy();
+```
+
+## Anonymous ID
+
+In browser environments, the SDK automatically generates and persists an `anonymousId` in `localStorage` under the key `uniflow_anonymous_id`. This ID is used for all events until a `userId` is provided via `identify()`.
+
+In Node.js (where `localStorage` is unavailable), a random UUID is generated per client instance.
+
+## Batching
+
+Events are queued in memory and sent in batches. A flush occurs when:
+- The queue reaches `flushAt` events (default: 20)
+- The `flushInterval` timer fires (default: every 10 seconds)
+- `flush()` is called manually
+
+Events are sent as a single POST to `/v1/batch` with Basic authentication.
+
+## Error handling
+
+On network failure, events are re-queued for the next flush attempt. The SDK uses best-effort delivery — events may be lost if the process exits before a successful flush.
+
+For critical events, call `await client.flush()` explicitly.

@@ -1,0 +1,37 @@
+---
+title: Uniflow Documentation
+description: Open-source Customer Data Platform — self-hosted on AWS
+template: splash
+hero:
+  title: Uniflow Documentation
+  tagline: Everything you need to deploy, configure, and integrate your self-hosted CDP.
+  actions:
+    - text: Quick Start
+      link: /getting-started/quickstart
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/maroil/uniflow
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Quick Start" icon="rocket">
+    Deploy Uniflow to your AWS account in under 5 minutes with the CLI.
+    [Get started →](/getting-started/quickstart)
+  </Card>
+  <Card title="Architecture" icon="setting">
+    Understand the AWS services, data flow, and design decisions behind Uniflow.
+    [Learn more →](/architecture/overview)
+  </Card>
+  <Card title="JavaScript SDK" icon="seti:javascript">
+    Track events from your browser or Node.js application.
+    [Read docs →](/sdks/javascript)
+  </Card>
+  <Card title="Python SDK" icon="seti:python">
+    Track events from your Python backend.
+    [Read docs →](/sdks/python)
+  </Card>
+</CardGrid>

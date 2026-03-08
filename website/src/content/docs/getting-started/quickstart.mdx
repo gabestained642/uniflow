@@ -1,0 +1,82 @@
+---
+title: Quick Start
+description: Deploy Uniflow to your AWS account in under 5 minutes.
+---
+
+Get a fully functional Customer Data Platform running on your AWS account in minutes.
+
+## Prerequisites
+
+- **Node.js** ≥ 20
+- **pnpm** ≥ 9
+- **AWS CLI** configured (`aws configure`)
+- **AWS CDK** bootstrapped (`npx cdk bootstrap`)
+
+## 1. Install the CLI
+
+```bash
+npm install -g uniflow
+```
+
+## 2. Initialize your project
+
+Run the interactive setup wizard to generate your configuration:
+
+```bash
+uniflow init
+```
+
+This prompts you for:
+- **AWS region** — where to deploy (e.g. `us-east-1`)
+- **Admin email** — for Cognito user pool
+- **Retention days** — how long to keep raw events in S3
+- **Connectors** — which destination connectors to enable
+- **Stack name** — CloudFormation stack name
+
+A `uniflow.config.yaml` file is created in your project root.
+
+## 3. Deploy
+
+```bash
+uniflow deploy
+```
+
+This runs CDK under the hood to provision all AWS resources: API Gateway, Lambda functions, DynamoDB, Kinesis, S3, and more.
+
+## 4. Verify
+
+```bash
+uniflow status
+```
+
+You'll see:
+- **Stack status** — `CREATE_COMPLETE`
+- **Ingest endpoint** — your API Gateway URL
+- **Admin UI URL** — CloudFront distribution
+- **Write key** — for authenticating SDK calls
+
+## 5. Start tracking
+
+Install the JavaScript SDK and send your first event:
+
+```typescript
+import { UnifowClient } from '@uniflow/js';
+
+const client = new UnifowClient({
+  writeKey: 'your_write_key',
+  host: 'https://your-api-gateway-url.amazonaws.com',
+});
+
+client.track({
+  event: 'Page Viewed',
+  userId: 'user_123',
+  properties: { page: '/pricing' },
+});
+```
+
+## Next steps
+
+- [Configuration reference](/getting-started/configuration) — all `uniflow.config.yaml` options
+- [JavaScript SDK](/sdks/javascript) — full API reference
+- [Python SDK](/sdks/python) — backend tracking
+- [Architecture overview](/architecture/overview) — how it all fits together

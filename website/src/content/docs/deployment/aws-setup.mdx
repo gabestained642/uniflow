@@ -1,0 +1,104 @@
+---
+title: AWS Setup
+description: Detailed guide for deploying Uniflow to AWS.
+---
+
+## IAM requirements
+
+Uniflow uses AWS CDK to deploy ~15 AWS services. The deploying user/role needs permissions to create and manage these resources.
+
+### Option A: Admin access (quickest)
+
+For initial setup, attach the `AdministratorAccess` managed policy. This is the fastest way to get started.
+
+### Option B: Least-privilege (recommended for production)
+
+Create a custom IAM policy with permissions for:
+
+- `cloudformation:*` — Stack management
+- `lambda:*` — Function management
+- `apigateway:*` — API Gateway
+- `dynamodb:*` — Table management
+- `kinesis:*` — Stream management
+- `firehose:*` — Delivery stream
+- `s3:*` — Bucket management
+- `sqs:*` — Queue management
+- `ecs:*` — Fargate tasks
+- `events:*` — EventBridge rules
+- `cognito-idp:*` — User pool
+- `cloudfront:*` — Distribution
+- `athena:*` — Query management
+- `glue:*` — Catalog
+- `kms:*` — Encryption keys
+- `iam:*` — Role/policy creation
+- `logs:*` — CloudWatch logs
+
+## CDK bootstrap
+
+CDK requires a one-time bootstrap per account/region:
+
+```bash
+npx cdk bootstrap aws://123456789012/us-east-1
+```
+
+This creates an S3 bucket and IAM roles that CDK uses to deploy assets.
+
+## Deployment
+
+```bash
+# Generate config
+uniflow init
+
+# Deploy all resources
+uniflow deploy
+```
+
+The first deployment takes 5-10 minutes. Subsequent updates are faster.
+
+## Stack outputs
+
+After deployment, `uniflow status` shows:
+
+| Output | Description |
+|--------|-------------|
+| `IngestEndpoint` | API Gateway URL for sending events |
+| `ManagementApiEndpoint` | URL for the management API |
+| `AdminUIUrl` | CloudFront URL for the admin dashboard |
+| `TableName` | DynamoDB table name |
+| `EventsBucket` | S3 bucket for raw events |
+
+## Multi-region
+
+Deploy to multiple regions by running `uniflow init` with different regions and stack names:
+
+```bash
+# US East
+uniflow init  # region: us-east-1, stackName: UnifowStack-USE1
+uniflow deploy
+
+# EU West
+uniflow init  # region: eu-west-1, stackName: UnifowStack-EUW1
+uniflow deploy
+```
+
+Each deployment is fully independent.
+
+## Teardown
+
+```bash
+uniflow destroy
+```
+
+This removes all CloudFormation-managed resources. S3 buckets with data are preserved by default (RETAIN policy). Delete them manually if needed:
+
+```bash
+aws s3 rb s3://uniflow-events-123456789012 --force
+```
+
+## Cost optimization
+
+- **Development**: Use `uniflow dev` with LocalStack for free local testing
+- **Staging**: Deploy with minimal Kinesis shard count
+- **Production**: All services use on-demand/pay-per-request billing, so costs scale with usage
+
+See [AWS Services](/architecture/aws-services) for detailed cost estimates.

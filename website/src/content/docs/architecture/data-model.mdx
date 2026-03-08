@@ -1,0 +1,68 @@
+---
+title: Data Model
+description: DynamoDB single-table design and entity types.
+---
+
+Uniflow uses a **single-table DynamoDB design** for all operational data. This maximizes performance by colocating related data and minimizing table count.
+
+## Entity types
+
+| Entity | PK | SK | Description |
+|--------|----|----|-------------|
+| Profile | `PROFILE#<userId>` | `META` | User profile with merged traits |
+| Event | `PROFILE#<userId>` | `EVENT#<ts>#<id>` | Individual tracked event |
+| Identity link | `ANON#<anonymousId>` | `IDENTITY` | Maps anonymous → known user |
+| Segment | `SEGMENT#<id>` | `META` | Segment definition (rules) |
+| Segment member | `SEGMENT#<id>` | `MEMBER#<userId>` | User-segment membership |
+| Source | `SOURCE#<id>` | `META` | Event source (write key) |
+| Destination | `DEST#<id>` | `META` | Destination connector config |
+| Migration | `MIGRATION#<id>` | `META` | Schema migration record |
+
+## Access patterns
+
+### Profile lookup
+
+```
+PK = PROFILE#user_123, SK = META
+→ Returns merged profile with all traits
+```
+
+### User event history
+
+```
+PK = PROFILE#user_123, SK begins_with EVENT#
+→ Returns all events for user, sorted by timestamp
+```
+
+### Identity resolution
+
+```
+PK = ANON#abc-123, SK = IDENTITY
+→ Returns the linked userId for an anonymous visitor
+```
+
+### Segment members
+
+```
+PK = SEGMENT#seg_456, SK begins_with MEMBER#
+→ Returns all users in a segment
+```
+
+## S3 data lake
+
+Raw events are also stored in S3 via Kinesis Firehose in GZIP-compressed NDJSON format, partitioned by date:
+
+```
+s3://uniflow-events-{account}/
+  raw/
+    year=2025/
+      month=03/
+        day=08/
+          events-00001.json.gz
+```
+
+This data lake powers Athena queries for audience segmentation. A Glue Catalog table provides the schema for SQL access.
+
+## Billing mode
+
+DynamoDB is provisioned with `PAY_PER_REQUEST` (on-demand) billing, so you only pay for actual reads and writes. There is no capacity planning required.

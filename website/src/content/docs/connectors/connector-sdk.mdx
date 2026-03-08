@@ -1,0 +1,109 @@
+---
+title: Connector SDK
+description: Build custom destination connectors for Uniflow.
+---
+
+The Connector SDK provides a `BaseConnector` abstract class for building your own destination connectors.
+
+## Installation
+
+```bash
+npm install @uniflow/connector-sdk
+```
+
+## Creating a connector
+
+Extend `BaseConnector` and implement the required `metadata` and `handle()` method:
+
+```typescript
+import {
+  BaseConnector,
+  type ConnectorEvent,
+  type ConnectorResult,
+} from '@uniflow/connector-sdk';
+import { z } from 'zod';
+
+// Define your connector's config schema
+const ConfigSchema = z.object({
+  apiKey: z.string(),
+  endpoint: z.string().url(),
+});
+
+type Config = z.infer<typeof ConfigSchema>;
+
+export class MyConnector extends BaseConnector<Config> {
+  readonly metadata = {
+    id: 'my-connector',
+    name: 'My Service',
+    description: 'Send events to My Service',
+    configSchema: ConfigSchema,
+  };
+
+  async handle(
+    event: ConnectorEvent,
+    config: Config,
+  ): Promise<ConnectorResult> {
+    const response = await fetch(config.endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify(event),
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `HTTP ${response.status}`,
+      };
+    }
+
+    return { success: true };
+  }
+}
+```
+
+## BaseConnector API
+
+### `metadata` (required)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique connector identifier |
+| `name` | `string` | Human-readable name |
+| `description` | `string` | Short description |
+| `configSchema` | `ZodSchema` | Zod schema for config validation |
+
+### `handle(event, config)` (required)
+
+Called for each event routed to this destination. Must return a `ConnectorResult`:
+
+```typescript
+interface ConnectorResult {
+  success: boolean;
+  error?: string;
+}
+```
+
+### `parseConfig(raw)` (inherited)
+
+Validates raw config from the Admin UI against your `configSchema`. Called automatically — you don't need to override this.
+
+```typescript
+const config = connector.parseConfig(rawConfigFromDB);
+// Throws ZodError if invalid
+```
+
+## Publishing
+
+Name your package `@uniflow/connector-<name>` and publish to npm. Then add it to your `uniflow.config.yaml`:
+
+```yaml
+connectors:
+  - webhook
+  - s3-export
+  - my-connector
+```
+
+The connector will be automatically picked up during `uniflow deploy`.

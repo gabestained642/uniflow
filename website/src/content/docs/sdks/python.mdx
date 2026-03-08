@@ -1,0 +1,148 @@
+---
+title: Python SDK
+description: Track events from Python applications.
+---
+
+The `uniflow-python` SDK is a thread-safe tracking client for Python backends. It batches events and flushes them in the background.
+
+## Installation
+
+```bash
+pip install uniflow-python
+```
+
+## Quick start
+
+```python
+from uniflow import UnifowClient, TrackOptions, IdentifyOptions
+
+client = UnifowClient(
+    write_key="your_write_key",
+    host="https://your-ingest-endpoint.amazonaws.com",
+)
+
+# Track an event
+client.track(TrackOptions(
+    event="Button Clicked",
+    user_id="user_123",
+    properties={"button": "signup", "plan": "pro"},
+))
+
+# Identify a user
+client.identify(IdentifyOptions(
+    user_id="user_123",
+    traits={"name": "Jane Doe", "email": "jane@acme.com"},
+))
+
+# Shutdown gracefully
+client.shutdown()
+```
+
+## Configuration
+
+```python
+client = UnifowClient(
+    write_key="your_write_key",       # Required
+    host="https://...",               # Ingest endpoint
+    flush_at=20,                      # Batch size (default: 20)
+    flush_interval=10.0,              # Flush interval in seconds (default: 10)
+    debug=False,                      # Enable debug logging
+)
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `write_key` | `str` | — | Source write key |
+| `host` | `str` | `https://ingest.uniflow.io` | Ingest API endpoint |
+| `flush_at` | `int` | `20` | Batch size before auto-flush |
+| `flush_interval` | `float` | `10.0` | Auto-flush interval (seconds) |
+| `debug` | `bool` | `False` | Print debug logs to stdout |
+
+## Methods
+
+### `track(options)`
+
+Record a user action.
+
+```python
+client.track(TrackOptions(
+    event="Purchase Completed",       # Required
+    user_id="user_123",              # Optional if anonymous_id set
+    anonymous_id="anon_456",         # Optional
+    properties={                     # Optional
+        "revenue": 99.99,
+        "currency": "USD",
+    },
+    timestamp="2025-03-08T...",      # Optional — auto-set
+))
+```
+
+### `identify(options)`
+
+Set traits for a known user.
+
+```python
+client.identify(IdentifyOptions(
+    user_id="user_123",              # Required
+    traits={                         # Optional
+        "name": "Jane Doe",
+        "email": "jane@acme.com",
+        "plan": "pro",
+    },
+))
+```
+
+### `page(options?)`
+
+Record a page view.
+
+```python
+client.page(PageOptions(
+    name="Pricing",
+    user_id="user_123",
+    properties={"url": "https://acme.com/pricing"},
+))
+```
+
+### `group(options)`
+
+Associate a user with a group.
+
+```python
+client.group(GroupOptions(
+    group_id="company_789",
+    user_id="user_123",
+    traits={"name": "Acme Inc", "industry": "SaaS"},
+))
+```
+
+### `flush()`
+
+Synchronously flush all queued events.
+
+```python
+client.flush()
+```
+
+### `shutdown()`
+
+Flush remaining events and stop the background timer. Call this on application shutdown.
+
+```python
+client.shutdown()
+```
+
+## Thread safety
+
+The SDK uses a `threading.Lock` to protect the event queue. It is safe to call `track()`, `identify()`, `page()`, and `group()` from multiple threads concurrently.
+
+The background flush timer runs as a daemon thread and will not prevent process exit.
+
+## Error handling
+
+On network failure, events are re-queued. Enable `debug=True` to see error details in stdout.
+
+```python
+client = UnifowClient(write_key="...", debug=True)
+# Prints: [uniflow] send failed: <urlopen error ...>
+```

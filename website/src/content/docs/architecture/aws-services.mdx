@@ -1,0 +1,49 @@
+---
+title: AWS Services
+description: Complete list of AWS services used by Uniflow.
+---
+
+## Services overview
+
+| Layer | Service | Purpose |
+|-------|---------|---------|
+| IaC | CloudFormation (CDK) | Infrastructure provisioning |
+| Ingest | API Gateway HTTP API | Event ingestion endpoint |
+| Compute | Lambda | Event processing, API handlers |
+| Compute | ECS Fargate | Audience builder (long-running) |
+| Streaming | Kinesis Data Streams | Event buffering (7-day retention) |
+| Streaming | Kinesis Firehose | S3 delivery |
+| Storage | DynamoDB | Profiles, events, identity graph |
+| Storage | S3 | Raw event archive, data lake |
+| Analytics | Athena | SQL queries over S3 for segmentation |
+| Analytics | Glue Catalog | Schema registry for Athena |
+| Auth | Cognito | Admin user authentication |
+| CDN | CloudFront | Admin UI static hosting |
+| Scheduling | EventBridge Scheduler | Hourly segment evaluation |
+| Queuing | SQS | Destination fan-out with DLQ |
+| Security | KMS | Encryption at rest |
+
+## Cost estimate
+
+For a low-traffic deployment (~10K events/day):
+
+| Service | Estimated monthly cost |
+|---------|----------------------|
+| Lambda | ~$0.50 |
+| API Gateway | ~$0.35 |
+| DynamoDB | ~$2.50 |
+| Kinesis | ~$3.60 |
+| S3 | ~$0.25 |
+| Fargate | ~$1.50 |
+| **Total** | **~$8.70/mo** |
+
+Costs scale linearly with event volume. At 1M events/day, expect ~$80-120/month.
+
+## Security
+
+- All data encrypted at rest via KMS
+- API Gateway uses write-key authentication
+- Management API protected by Cognito JWT
+- Admin UI served over HTTPS via CloudFront
+- SQS dead-letter queues prevent event loss
+- S3 buckets have RETAIN deletion policy

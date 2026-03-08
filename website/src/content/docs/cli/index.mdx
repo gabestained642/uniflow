@@ -1,0 +1,105 @@
+---
+title: CLI Commands
+description: Complete reference for the Uniflow CLI.
+---
+
+The Uniflow CLI manages the full lifecycle of your CDP deployment.
+
+## Installation
+
+```bash
+npm install -g uniflow
+```
+
+## Commands
+
+### `uniflow init`
+
+Interactive setup wizard that generates `uniflow.config.yaml`.
+
+```bash
+uniflow init
+```
+
+Prompts for:
+- **AWS region** — deployment target (e.g. `us-east-1`)
+- **Admin email** — for Cognito user pool
+- **Retention days** — S3 raw event retention (default: 90)
+- **Connectors** — which destination connectors to enable
+- **Stack name** — CloudFormation stack name (default: `UnifowStack`)
+
+### `uniflow deploy`
+
+Deploy or update the Uniflow stack on your AWS account.
+
+```bash
+uniflow deploy
+uniflow deploy --skip-migrations
+```
+
+| Flag | Description |
+|------|-------------|
+| `--skip-migrations` | Skip database migrations |
+
+This reads `uniflow.config.yaml`, runs any pending migrations, and executes `cdk deploy` with your configuration.
+
+### `uniflow status`
+
+Check the health and status of your deployed stack.
+
+```bash
+uniflow status
+```
+
+Displays:
+- **Stack status** — e.g. `CREATE_COMPLETE`, `UPDATE_COMPLETE`
+- **Region** — AWS region
+- **Last updated** — timestamp of last deployment
+- **Outputs** — API endpoints, CloudFront URL, etc.
+
+Status is color-coded: green for healthy, yellow for in-progress, red for failed.
+
+### `uniflow upgrade`
+
+Upgrade Uniflow to the latest version and redeploy.
+
+```bash
+uniflow upgrade
+```
+
+This command:
+1. Updates the `@uniflow/cdk` package to the latest version
+2. Runs any new migrations
+3. Redeploys the CDK stack
+
+### `uniflow destroy`
+
+Tear down the Uniflow stack and remove all AWS resources.
+
+```bash
+uniflow destroy
+uniflow destroy --force
+```
+
+| Flag | Description |
+|------|-------------|
+| `-f, --force` | Skip confirmation prompt |
+
+S3 buckets with a `RETAIN` deletion policy are preserved even after destroy.
+
+### `uniflow dev`
+
+Start a local development environment using Docker and LocalStack.
+
+```bash
+uniflow dev
+uniflow dev --full
+```
+
+| Flag | Description |
+|------|-------------|
+| `--full` | Include the audience-builder container |
+
+Prerequisites: Docker must be running.
+
+This starts LocalStack with DynamoDB, S3, Kinesis, and SQS emulation. Outputs local endpoint URLs and resource names for testing.

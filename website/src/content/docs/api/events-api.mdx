@@ -1,0 +1,178 @@
+---
+title: Events API
+description: HTTP API for ingesting track, identify, page, and group events.
+---
+
+The Events API is a Segment-compatible HTTP endpoint for ingesting customer data events. It accepts batched events and validates them against Zod schemas.
+
+## Endpoint
+
+```
+POST /v1/batch
+```
+
+## Authentication
+
+Use HTTP Basic authentication with your source write key as the username and an empty password:
+
+```bash
+curl -X POST https://your-endpoint.amazonaws.com/v1/batch \
+  -H "Content-Type: application/json" \
+  -u "your_write_key:" \
+  -d '{
+    "batch": [...],
+    "sentAt": "2025-03-08T12:00:00.000Z"
+  }'
+```
+
+## Request body
+
+```json
+{
+  "batch": [
+    {
+      "type": "track",
+      "event": "Button Clicked",
+      "userId": "user_123",
+      "properties": { "button": "signup" },
+      "timestamp": "2025-03-08T12:00:00.000Z",
+      "messageId": "msg_abc123"
+    }
+  ],
+  "sentAt": "2025-03-08T12:00:00.000Z"
+}
+```
+
+## Event types
+
+### Track
+
+Record a user action.
+
+```json
+{
+  "type": "track",
+  "event": "Purchase Completed",
+  "userId": "user_123",
+  "anonymousId": "anon_456",
+  "properties": {
+    "revenue": 99.99,
+    "currency": "USD"
+  },
+  "timestamp": "2025-03-08T12:00:00.000Z",
+  "messageId": "unique-id"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | `"track"` | Yes | Event type |
+| `event` | `string` | Yes | Event name (min 1 char) |
+| `userId` | `string` | Conditional | Known user ID |
+| `anonymousId` | `string` | Conditional | Anonymous visitor ID |
+| `properties` | `object` | No | Event properties |
+| `timestamp` | `ISO 8601` | Yes | Event timestamp |
+| `messageId` | `string` | Yes | Unique message ID |
+
+Either `userId` or `anonymousId` must be provided.
+
+### Identify
+
+Set user traits.
+
+```json
+{
+  "type": "identify",
+  "userId": "user_123",
+  "traits": {
+    "name": "Jane Doe",
+    "email": "jane@acme.com"
+  },
+  "timestamp": "2025-03-08T12:00:00.000Z",
+  "messageId": "unique-id"
+}
+```
+
+### Page
+
+Record a page view.
+
+```json
+{
+  "type": "page",
+  "name": "Pricing",
+  "userId": "user_123",
+  "properties": {
+    "url": "https://acme.com/pricing",
+    "title": "Pricing - Acme",
+    "referrer": "https://google.com",
+    "search": "?plan=pro",
+    "path": "/pricing"
+  },
+  "timestamp": "2025-03-08T12:00:00.000Z",
+  "messageId": "unique-id"
+}
+```
+
+### Group
+
+Associate a user with a group.
+
+```json
+{
+  "type": "group",
+  "groupId": "company_789",
+  "userId": "user_123",
+  "traits": {
+    "name": "Acme Inc",
+    "industry": "SaaS"
+  },
+  "timestamp": "2025-03-08T12:00:00.000Z",
+  "messageId": "unique-id"
+}
+```
+
+### Screen
+
+Record a mobile screen view.
+
+```json
+{
+  "type": "screen",
+  "name": "Settings",
+  "userId": "user_123",
+  "properties": {},
+  "timestamp": "2025-03-08T12:00:00.000Z",
+  "messageId": "unique-id"
+}
+```
+
+## Context object
+
+All events can include an optional `context` object:
+
+```json
+{
+  "context": {
+    "ip": "203.0.113.1",
+    "userAgent": "Mozilla/5.0...",
+    "locale": "en-US",
+    "page": {
+      "url": "https://acme.com",
+      "title": "Home",
+      "referrer": "https://google.com"
+    },
+    "campaign": {
+      "name": "spring_sale",
+      "source": "google",
+      "medium": "cpc",
+      "content": "banner_a",
+      "term": "cdp"
+    }
+  }
+}
+```
+
+## Validation
+
+Events are validated server-side using Zod schemas. Invalid events return a `400` status with error details.

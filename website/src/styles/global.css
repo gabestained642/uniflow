@@ -1,0 +1,193 @@
+@import '@fontsource/instrument-serif/400.css';
+@import '@fontsource/instrument-serif/400-italic.css';
+@import '@fontsource/geist-sans/400.css';
+@import '@fontsource/geist-sans/500.css';
+@import '@fontsource/geist-sans/600.css';
+@import '@fontsource/geist-sans/700.css';
+@import '@fontsource/geist-mono/400.css';
+@import '@fontsource/geist-mono/500.css';
+
+/* ─── Design Tokens ──────────────────────────────────────────────────── */
+
+:root {
+  --bg-deep: #0a0a0f;
+  --bg-surface: #12121a;
+  --bg-subtle: #1a1a2e;
+  --text-primary: #eeeef0;
+  --text-muted: #8b8b9e;
+  --text-on-accent: #041318;
+  --accent-cyan: #22d3ee;
+  --accent-indigo: #818cf8;
+  --accent-glow: linear-gradient(135deg, #22d3ee, #818cf8);
+  --border: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.12);
+
+  --font-display: 'Instrument Serif', 'Georgia', serif;
+  --font-sans: 'Geist Sans', 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'SF Mono', 'Consolas', monospace;
+
+  --glow-cyan: 0 0 40px rgba(34, 211, 238, 0.15);
+  --glow-indigo: 0 0 40px rgba(129, 140, 248, 0.15);
+  --glow-combined: 0 0 60px rgba(34, 211, 238, 0.1), 0 0 120px rgba(129, 140, 248, 0.06);
+
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --bg-deep: #fafaf9;
+  --bg-surface: #f0f0ee;
+  --bg-subtle: #e5e5e0;
+  --text-primary: #0f172a;
+  --text-muted: #64748b;
+  --text-on-accent: #07202a;
+  --border: rgba(0, 0, 0, 0.06);
+  --border-hover: rgba(0, 0, 0, 0.12);
+  --glow-cyan: 0 0 40px rgba(34, 211, 238, 0.1);
+  --glow-indigo: 0 0 40px rgba(129, 140, 248, 0.1);
+  --glow-combined: 0 0 60px rgba(34, 211, 238, 0.08), 0 0 120px rgba(129, 140, 248, 0.04);
+
+  color-scheme: light;
+}
+
+/* ─── Global Reset & Base ────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+}
+
+body.landing-body {
+  font-family: var(--font-sans);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+/* ─── Starlight Overrides ────────────────────────────────────────────── */
+
+:root {
+  --sl-color-bg: var(--bg-deep);
+  --sl-color-bg-nav: var(--bg-surface);
+  --sl-color-bg-sidebar: var(--bg-surface);
+  --sl-color-bg-inline-code: var(--bg-subtle);
+  --sl-color-hairline-light: var(--border);
+  --sl-color-hairline: var(--border-hover);
+  --sl-color-text: var(--text-primary);
+  --sl-color-text-accent: var(--accent-cyan);
+  --sl-color-text-invert: var(--text-on-accent);
+  --sl-color-white: var(--text-primary);
+  --sl-color-gray-1: var(--text-muted);
+  --sl-color-accent-low: rgba(34, 211, 238, 0.1);
+  --sl-color-accent: var(--accent-cyan);
+  --sl-color-accent-high: var(--accent-cyan);
+  --sl-font: var(--font-sans);
+  --sl-font-system-mono: var(--font-mono);
+}
+
+/* Starlight sidebar active link */
+starlight-toc a[aria-current='true'],
+.sidebar-content a[aria-current='page'] {
+  color: var(--accent-cyan) !important;
+  border-color: var(--accent-cyan) !important;
+}
+
+.sidebar-content a[aria-current='page'],
+.sidebar-content a[aria-current='page']:hover,
+.sidebar-content a[aria-current='page']:focus {
+  color: var(--text-on-accent) !important;
+  background: linear-gradient(135deg, #34d8ef 0%, #22d3ee 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+/* Code blocks in docs */
+.expressive-code,
+.expressive-code pre {
+  font-family: var(--font-mono) !important;
+}
+
+/* ─── Utility Classes ────────────────────────────────────────────────── */
+
+.gradient-text {
+  background: var(--accent-glow);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glass {
+  background: rgba(18, 18, 26, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+}
+
+[data-theme='light'] .glass {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────── */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes flow-right {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out both;
+}
+
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+.delay-600 { animation-delay: 0.6s; }
+.delay-700 { animation-delay: 0.7s; }
+.delay-800 { animation-delay: 0.8s; }

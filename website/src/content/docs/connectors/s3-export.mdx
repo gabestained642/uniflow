@@ -1,0 +1,56 @@
+---
+title: S3 Export Connector
+description: Export events as NDJSON to any S3 bucket.
+---
+
+The S3 export connector writes processed events to an S3 bucket in NDJSON (newline-delimited JSON) format.
+
+## Configuration
+
+```json
+{
+  "name": "Data Warehouse Export",
+  "type": "s3-export",
+  "config": {
+    "bucket": "my-data-lake",
+    "prefix": "uniflow/events/",
+    "region": "us-east-1"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `bucket` | `string` | Target S3 bucket name |
+| `prefix` | `string` | Key prefix for exported files |
+| `region` | `string` | Bucket region |
+
+## Output format
+
+Events are written as NDJSON files, one event per line:
+
+```
+s3://my-data-lake/uniflow/events/2025/03/08/events-001.ndjson
+```
+
+Each line is a complete JSON object:
+
+```json
+{"type":"track","event":"Purchase","userId":"user_123","properties":{"revenue":99.99},"timestamp":"2025-03-08T12:00:00.000Z"}
+{"type":"identify","userId":"user_123","traits":{"name":"Jane Doe"},"timestamp":"2025-03-08T12:01:00.000Z"}
+```
+
+## IAM permissions
+
+The Uniflow stack's Lambda execution role needs `s3:PutObject` permission on your target bucket. For cross-account buckets, add a bucket policy:
+
+```json
+{
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": { "AWS": "arn:aws:iam::UNIFLOW_ACCOUNT:role/..." },
+    "Action": "s3:PutObject",
+    "Resource": "arn:aws:s3:::my-data-lake/uniflow/*"
+  }]
+}
+```

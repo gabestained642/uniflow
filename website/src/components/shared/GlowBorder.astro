@@ -1,0 +1,45 @@
+---
+interface Props {
+  class?: string;
+}
+
+const { class: className = '' } = Astro.props;
+---
+
+<div class:list={['glow-border', className]}>
+  <div class="glow-border-inner">
+    <slot />
+  </div>
+</div>
+
+<style>
+  .glow-border {
+    position: relative;
+    border-radius: 1rem;
+    padding: 1px;
+    background: var(--border);
+    transition: all 0.4s ease;
+  }
+
+  .glow-border:hover {
+    background: var(--accent-glow);
+  }
+
+  .glow-border:hover::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 1rem;
+    background: var(--accent-glow);
+    filter: blur(12px);
+    opacity: 0.4;
+    z-index: -1;
+  }
+
+  .glow-border-inner {
+    background: var(--bg-surface);
+    border-radius: calc(1rem - 1px);
+    padding: 2rem;
+    height: 100%;
+  }
+</style>

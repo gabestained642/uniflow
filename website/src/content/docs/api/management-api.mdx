@@ -1,0 +1,177 @@
+---
+title: Management API
+description: CRUD API for managing sources, destinations, segments, and profiles.
+---
+
+The Management API provides CRUD operations for configuring your CDP. It is protected by Cognito JWT authentication.
+
+## Base URL
+
+```
+https://your-management-api.amazonaws.com
+```
+
+## Authentication
+
+Include a Cognito JWT bearer token in the `Authorization` header:
+
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  https://your-management-api.amazonaws.com/sources
+```
+
+## Sources
+
+### List sources
+
+```
+GET /sources
+```
+
+Returns all configured event sources with their write keys.
+
+### Create source
+
+```
+POST /sources
+```
+
+```json
+{
+  "name": "Production App",
+  "description": "Main web application"
+}
+```
+
+A `writeKey` is automatically generated using SHA-256 hashing.
+
+### Delete source
+
+```
+DELETE /sources/:id
+```
+
+## Destinations
+
+### List destinations
+
+```
+GET /destinations
+```
+
+### Create destination
+
+```
+POST /destinations
+```
+
+```json
+{
+  "name": "Slack Webhook",
+  "type": "webhook",
+  "config": {
+    "url": "https://hooks.slack.com/...",
+    "secret": "webhook_secret"
+  }
+}
+```
+
+Supported types: `webhook`, `s3-export`, or any custom connector ID.
+
+### Update destination
+
+```
+PUT /destinations/:id
+```
+
+```json
+{
+  "name": "Updated Name",
+  "config": { "url": "https://new-url.com" }
+}
+```
+
+### Delete destination
+
+```
+DELETE /destinations/:id
+```
+
+## Segments
+
+### List segments
+
+```
+GET /segments
+```
+
+### Create segment
+
+```
+POST /segments
+```
+
+```json
+{
+  "name": "Power Users",
+  "description": "Users with more than 100 events",
+  "rules": [
+    {
+      "field": "event_count",
+      "operator": "gt",
+      "value": 100
+    }
+  ]
+}
+```
+
+Rules use a `field` / `operator` / `value` structure. Available operators: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `contains`, `not_contains`.
+
+### Update segment
+
+```
+PUT /segments/:id
+```
+
+### Delete segment
+
+```
+DELETE /segments/:id
+```
+
+### List segment members
+
+```
+GET /segments/:id/members
+```
+
+Returns all user IDs that belong to the segment.
+
+## Profiles
+
+### Get profile
+
+```
+GET /profiles/:userId
+```
+
+Returns the unified profile with merged traits and associated events.
+
+```json
+{
+  "userId": "user_123",
+  "traits": {
+    "name": "Jane Doe",
+    "email": "jane@acme.com",
+    "plan": "pro"
+  },
+  "events": [
+    {
+      "type": "track",
+      "event": "Purchase Completed",
+      "timestamp": "2025-03-08T12:00:00.000Z",
+      "properties": { "revenue": 99.99 }
+    }
+  ]
+}
+```

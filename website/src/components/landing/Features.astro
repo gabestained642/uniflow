@@ -1,0 +1,118 @@
+---
+import GlowBorder from '../shared/GlowBorder.astro';
+
+const features = [
+  {
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`,
+    title: 'Event Collection',
+    description: 'Segment-compatible track, identify, page, and group API. Drop-in replacement.',
+  },
+  {
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    title: 'Identity Resolution',
+    description: 'Link anonymous visitors to known users automatically with a persistent identity graph.',
+  },
+  {
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M2 11h2M20 11h2M12 2v1"/></svg>`,
+    title: 'Unified Profiles',
+    description: 'Merged traits and full event history. A single customer view in DynamoDB.',
+  },
+  {
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
+    title: 'Audience Segmentation',
+    description: 'Rule-based segments evaluated hourly via Athena over your S3 data lake.',
+  },
+  {
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
+    title: 'Destinations',
+    description: 'Webhook and S3 export built-in. Extensible connector SDK for custom integrations.',
+  },
+  {
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="6" cy="18" r="1" fill="currentColor"/></svg>`,
+    title: 'Self-Hosted',
+    description: 'Deploy to your AWS account with one CLI command. Your data never leaves your infra.',
+  },
+];
+---
+
+<section class="features" id="features">
+  <div class="features-inner">
+    <div class="section-header animate-fade-in-up">
+      <p class="section-label">Features</p>
+      <h2 class="section-title">Everything you need from a CDP.<br/><span class="gradient-text">Nothing you don't.</span></h2>
+    </div>
+
+    <div class="features-grid">
+      {features.map((feature, i) => (
+        <GlowBorder class={`animate-fade-in-up delay-${(i + 1) * 100}`}>
+          <div class="feature-icon" set:html={feature.icon} />
+          <h3 class="feature-title">{feature.title}</h3>
+          <p class="feature-desc">{feature.description}</p>
+        </GlowBorder>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .features {
+    padding: 6rem 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section-header {
+    text-align: center;
+    margin-bottom: 4rem;
+  }
+
+  .section-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 4vw, 2.75rem);
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+
+  .feature-icon {
+    color: var(--accent-cyan);
+    margin-bottom: 1rem;
+  }
+
+  .feature-title {
+    font-family: var(--font-sans);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  .feature-desc {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 900px) {
+    .features-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 600px) {
+    .features-grid { grid-template-columns: 1fr; }
+  }
+</style>

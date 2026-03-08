@@ -1,0 +1,65 @@
+---
+title: Webhook Connector
+description: Forward events to any HTTP endpoint with HMAC signing.
+---
+
+The webhook connector sends events as HTTP POST requests to a URL of your choice. Each request is signed with HMAC-SHA256 for verification.
+
+## Configuration
+
+Configure via the Admin UI or Management API:
+
+```json
+{
+  "name": "My Webhook",
+  "type": "webhook",
+  "config": {
+    "url": "https://api.example.com/webhooks/uniflow",
+    "secret": "your_webhook_secret"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | `string` | Destination URL |
+| `secret` | `string` | HMAC signing secret |
+
+## Request format
+
+Each event is sent as a JSON POST:
+
+```http
+POST /webhooks/uniflow HTTP/1.1
+Content-Type: application/json
+X-Uniflow-Signature: sha256=abc123...
+
+{
+  "type": "track",
+  "event": "Purchase Completed",
+  "userId": "user_123",
+  "properties": { "revenue": 99.99 },
+  "timestamp": "2025-03-08T12:00:00.000Z"
+}
+```
+
+## Verifying signatures
+
+Verify the `X-Uniflow-Signature` header by computing HMAC-SHA256 of the raw request body with your secret:
+
+```javascript
+import crypto from 'crypto';
+
+function verifySignature(body, signature, secret) {
+  const expected = 'sha256=' +
+    crypto.createHmac('sha256', secret).update(body).digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected),
+  );
+}
+```
+
+## Retry behavior
+
+Failed webhooks (non-2xx responses or timeouts) are retried via SQS with exponential backoff. After the maximum retry count, events are moved to a dead-letter queue.

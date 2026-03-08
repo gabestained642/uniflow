@@ -1,0 +1,153 @@
+---
+import ThemeToggle from '../shared/ThemeToggle.astro';
+import Button from '../shared/Button.astro';
+---
+
+<header class="header" id="header">
+  <div class="header-inner">
+    <a href="/" class="logo" aria-label="Uniflow home">
+      <svg width="120" height="28" viewBox="0 0 140 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#22d3ee"/>
+            <stop offset="100%" stop-color="#818cf8"/>
+          </linearGradient>
+        </defs>
+        <path d="M4 6v12a8 8 0 0 0 16 0V6" stroke="url(#logo-grad)" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <circle cx="12" cy="14" r="2.5" fill="#22d3ee">
+          <animate attributeName="cy" values="8;18;8" dur="2s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite"/>
+        </circle>
+        <text x="28" y="22" font-family="Geist Sans, system-ui, sans-serif" font-size="18" font-weight="500" fill="currentColor" letter-spacing="-0.02em">
+          uni<tspan fill="url(#logo-grad)">flow</tspan>
+        </text>
+      </svg>
+    </a>
+
+    <nav class="nav">
+      <a href="#features" class="nav-link">Features</a>
+      <a href="#architecture" class="nav-link">Architecture</a>
+      <a href="/getting-started/quickstart" class="nav-link">Docs</a>
+      <a href="https://github.com/maroil/uniflow" class="nav-link" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+
+    <div class="header-actions">
+      <ThemeToggle />
+      <Button href="/getting-started/quickstart" size="sm">Get Started</Button>
+    </div>
+
+    <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M3 12h18M3 6h18M3 18h18"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="mobile-nav" id="mobile-nav">
+    <a href="#features" class="mobile-nav-link">Features</a>
+    <a href="#architecture" class="mobile-nav-link">Architecture</a>
+    <a href="/getting-started/quickstart" class="mobile-nav-link">Docs</a>
+    <a href="https://github.com/maroil/uniflow" class="mobile-nav-link" target="_blank" rel="noopener">GitHub</a>
+    <Button href="/getting-started/quickstart" size="sm">Get Started</Button>
+  </div>
+</header>
+
+<style>
+  .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(10, 10, 15, 0.8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    transition: background 0.3s ease;
+  }
+
+  [data-theme='light'] .header {
+    background: rgba(250, 250, 249, 0.8);
+  }
+
+  .header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    height: 4rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    color: var(--text-primary);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+  }
+
+  .nav {
+    display: flex;
+    gap: 2rem;
+  }
+
+  .nav-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 450;
+    transition: color 0.2s ease;
+  }
+
+  .nav-link:hover {
+    color: var(--text-primary);
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .mobile-menu-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 0.5rem;
+  }
+
+  .mobile-nav {
+    display: none;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem 1.5rem 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .mobile-nav-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.9375rem;
+    padding: 0.5rem 0;
+  }
+
+  @media (max-width: 768px) {
+    .nav, .header-actions { display: none; }
+    .mobile-menu-btn { display: block; }
+    .mobile-nav.open { display: flex; }
+  }
+</style>
+
+<script>
+  const btn = document.getElementById('mobile-menu-btn');
+  const nav = document.getElementById('mobile-nav');
+  btn?.addEventListener('click', () => nav?.classList.toggle('open'));
+
+  // Close mobile nav on link click
+  nav?.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => nav?.classList.remove('open'));
+  });
+</script>
