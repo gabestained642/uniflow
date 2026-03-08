@@ -3,7 +3,9 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as kinesis from 'aws-cdk-lib/aws-kinesis';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as firehose from 'aws-cdk-lib/aws-kinesisfirehose';
+import * as glue from 'aws-cdk-lib/aws-glue';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as kms from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
 
 export interface StorageConstructProps {
@@ -15,6 +17,9 @@ export class StorageConstruct extends Construct {
   public readonly eventStream: kinesis.Stream;
   public readonly rawBucket: s3.Bucket;
   public readonly processedBucket: s3.Bucket;
+  public readonly glueDatabase: glue.CfnDatabase;
+  public readonly glueTable: glue.CfnTable;
+  public readonly encryptionKey: kms.Key;
 
   constructor(scope: Construct, id: string, props: StorageConstructProps) {
     super(scope, id);
@@ -94,5 +99,73 @@ export class StorageConstruct extends Construct {
         compressionFormat: 'GZIP',
       },
     });
+
+    // -------------------------------------------------------
+    // Glue Database & Table — enables Athena queries over raw events
+    // -------------------------------------------------------
+    this.glueDatabase = new glue.CfnDatabase(this, 'GlueDatabase', {
+      catalogId: cdk.Aws.ACCOUNT_ID,
+      databaseInput: {
+        name: 'uniflow',
+        description: 'Uniflow CDP raw and processed event data',
+      },
+    });
+
+    this.glueTable = new glue.CfnTable(this, 'RawEventsTable', {
+      catalogId: cdk.Aws.ACCOUNT_ID,
+      databaseName: 'uniflow',
+      tableInput: {
+        name: 'uniflow_raw_events',
+        description: 'Raw CDP events delivered by Firehose (JSON lines, GZIP)',
+        tableType: 'EXTERNAL_TABLE',
+        parameters: {
+          'classification': 'json',
+          'compressionType': 'gzip',
+          'typeOfData': 'file',
+        },
+        storageDescriptor: {
+          location: `s3://${this.rawBucket.bucketName}/raw/`,
+          inputFormat: 'org.apache.hadoop.mapred.TextInputFormat',
+          outputFormat: 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat',
+          compressed: true,
+          serdeInfo: {
+            serializationLibrary: 'org.openx.data.jsonserde.JsonSerDe',
+            parameters: {
+              'ignore.malformed.json': 'true',
+            },
+          },
+          columns: [
+            { name: 'event_id', type: 'string' },
+            { name: 'event_type', type: 'string' },
+            { name: 'timestamp', type: 'string' },
+            { name: 'user_id', type: 'string' },
+            { name: 'anonymous_id', type: 'string' },
+            { name: 'source_id', type: 'string' },
+            { name: 'properties', type: 'string' },
+            { name: 'context', type: 'string' },
+          ],
+        },
+        partitionKeys: [
+          { name: 'year', type: 'string' },
+          { name: 'month', type: 'string' },
+          { name: 'day', type: 'string' },
+        ],
+      },
+    });
+    this.glueTable.addDependency(this.glueDatabase);
+
+    // -------------------------------------------------------
+    // KMS key — encrypts Secrets Manager destination credentials
+    // -------------------------------------------------------
+    this.encryptionKey = new kms.Key(this, 'SecretsEncryptionKey', {
+      description: 'Encrypts Uniflow destination credentials in Secrets Manager',
+      enableKeyRotation: true,
+      alias: 'uniflow/secrets',
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // NOTE: Individual secrets for each destination connector are created
+    // dynamically by the Management API at runtime using this KMS key.
+    // See the Management API Lambda for the Secrets Manager create/update logic.
   }
 }

@@ -1,4 +1,4 @@
-import type { UnifowConfig, TrackOptions, IdentifyOptions, PageOptions } from './types';
+import type { UnifowConfig, TrackOptions, IdentifyOptions, PageOptions, GroupOptions } from './types';
 
 const DEFAULT_HOST = 'https://ingest.uniflow.io';
 const DEFAULT_FLUSH_AT = 20;
@@ -41,6 +41,18 @@ export class UnifowClient {
   identify(options: IdentifyOptions): void {
     this.enqueue({
       type: 'identify',
+      userId: options.userId,
+      traits: options.traits,
+      anonymousId: options.anonymousId ?? this.anonymousId,
+      timestamp: new Date().toISOString(),
+      messageId: this.uuid(),
+    });
+  }
+
+  group(options: GroupOptions): void {
+    this.enqueue({
+      type: 'group',
+      groupId: options.groupId,
       userId: options.userId,
       traits: options.traits,
       anonymousId: options.anonymousId ?? this.anonymousId,

@@ -1,13 +1,16 @@
 import * as cdk from 'aws-cdk-lib';
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as authorizers from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import * as integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as kinesis from 'aws-cdk-lib/aws-kinesis';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as path from 'path';
 import { Construct } from 'constructs';
 
 export interface IngestionConstructProps {
   eventStream: kinesis.Stream;
+  profileTable: dynamodb.Table;
 }
 
 export class IngestionConstruct extends Construct {
@@ -15,6 +18,28 @@ export class IngestionConstruct extends Construct {
 
   constructor(scope: Construct, id: string, props: IngestionConstructProps) {
     super(scope, id);
+
+    // Authorizer Lambda
+    const authorizerFn = new lambda.Function(this, 'AuthorizerFn', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(
+        path.join(__dirname, '../../../services/authorizer/dist')
+      ),
+      environment: {
+        PROFILE_TABLE_NAME: props.profileTable.tableName,
+        LOG_LEVEL: 'info',
+      },
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 128,
+    });
+
+    props.profileTable.grantReadData(authorizerFn);
+
+    const authorizer = new authorizers.HttpLambdaAuthorizer('WriteKeyAuthorizer', authorizerFn, {
+      responseTypes: [authorizers.HttpLambdaResponseType.SIMPLE],
+      identitySource: ['$request.header.Authorization'],
+    });
 
     // Ingest Lambda
     const ingestFn = new lambda.Function(this, 'IngestFn', {
@@ -46,11 +71,11 @@ export class IngestionConstruct extends Construct {
     const integration = new integrations.HttpLambdaIntegration('IngestIntegration', ingestFn);
 
     // Segment-compatible routes
-    api.addRoutes({ path: '/v1/track', methods: [apigwv2.HttpMethod.POST], integration });
-    api.addRoutes({ path: '/v1/identify', methods: [apigwv2.HttpMethod.POST], integration });
-    api.addRoutes({ path: '/v1/page', methods: [apigwv2.HttpMethod.POST], integration });
-    api.addRoutes({ path: '/v1/group', methods: [apigwv2.HttpMethod.POST], integration });
-    api.addRoutes({ path: '/v1/batch', methods: [apigwv2.HttpMethod.POST], integration });
+    api.addRoutes({ path: '/v1/track', methods: [apigwv2.HttpMethod.POST], integration, authorizer });
+    api.addRoutes({ path: '/v1/identify', methods: [apigwv2.HttpMethod.POST], integration, authorizer });
+    api.addRoutes({ path: '/v1/page', methods: [apigwv2.HttpMethod.POST], integration, authorizer });
+    api.addRoutes({ path: '/v1/group', methods: [apigwv2.HttpMethod.POST], integration, authorizer });
+    api.addRoutes({ path: '/v1/batch', methods: [apigwv2.HttpMethod.POST], integration, authorizer });
 
     this.apiEndpoint = api.apiEndpoint;
   }

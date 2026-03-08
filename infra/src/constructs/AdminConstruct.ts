@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { HttpJwtAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
@@ -95,7 +96,19 @@ export class AdminConstruct extends Construct {
       managementFn
     );
 
-    api.addRoutes({ path: '/api/{proxy+}', methods: [apigwv2.HttpMethod.ANY], integration: mgmtIntegration });
+    const region = cdk.Stack.of(this).region;
+    const issuerUrl = `https://cognito-idp.${region}.amazonaws.com/${userPool.userPoolId}`;
+
+    const jwtAuthorizer = new HttpJwtAuthorizer('CognitoAuthorizer', issuerUrl, {
+      jwtAudience: [userPoolClient.userPoolClientId],
+    });
+
+    api.addRoutes({
+      path: '/api/{proxy+}',
+      methods: [apigwv2.HttpMethod.ANY],
+      integration: mgmtIntegration,
+      authorizer: jwtAuthorizer,
+    });
 
     this.managementApiEndpoint = api.apiEndpoint;
 

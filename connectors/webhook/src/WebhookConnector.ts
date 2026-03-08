@@ -40,19 +40,37 @@ export class WebhookConnector extends BaseConnector<WebhookConfig> {
       headers['X-Uniflow-Signature'] = `sha256=${signature}`;
     }
 
-    const response = await fetch(config.url, {
-      method: config.method,
-      headers,
-      body,
-    });
+    let lastError: string | undefined;
 
-    if (!response.ok) {
-      return {
-        success: false,
-        error: `HTTP ${response.status}: ${response.statusText}`,
-      };
+    for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
+      try {
+        const response = await fetch(config.url, {
+          method: config.method,
+          headers,
+          body,
+        });
+
+        if (response.ok) {
+          return { success: true };
+        }
+
+        lastError = `HTTP ${response.status}: ${response.statusText}`;
+
+        // Only retry on 5xx status codes
+        if (response.status < 500) {
+          return { success: false, error: lastError };
+        }
+      } catch (err) {
+        // Network errors are retryable
+        lastError = err instanceof Error ? err.message : String(err);
+      }
+
+      // Wait with exponential backoff before next attempt (skip delay after last attempt)
+      if (attempt < config.maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt));
+      }
     }
 
-    return { success: true };
+    return { success: false, error: lastError };
   }
 }

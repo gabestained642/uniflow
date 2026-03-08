@@ -5,6 +5,7 @@ import { IngestionConstruct } from '../constructs/IngestionConstruct';
 import { ProcessingConstruct } from '../constructs/ProcessingConstruct';
 import { AudienceConstruct } from '../constructs/AudienceConstruct';
 import { AdminConstruct } from '../constructs/AdminConstruct';
+import { ActivationConstruct } from '../constructs/ActivationConstruct';
 
 export interface UnifowStackProps extends cdk.StackProps {
   /** Admin email for Cognito user pool */
@@ -21,6 +22,7 @@ export class UnifowStack extends cdk.Stack {
   public readonly processing: ProcessingConstruct;
   public readonly audience: AudienceConstruct;
   public readonly admin: AdminConstruct;
+  public readonly activation: ActivationConstruct;
 
   constructor(scope: Construct, id: string, props: UnifowStackProps) {
     super(scope, id, props);
@@ -31,6 +33,7 @@ export class UnifowStack extends cdk.Stack {
 
     this.ingestion = new IngestionConstruct(this, 'Ingestion', {
       eventStream: this.storage.eventStream,
+      profileTable: this.storage.profileTable,
     });
 
     this.processing = new ProcessingConstruct(this, 'Processing', {
@@ -45,6 +48,11 @@ export class UnifowStack extends cdk.Stack {
 
     this.admin = new AdminConstruct(this, 'Admin', {
       adminEmail: props.adminEmail,
+      profileTable: this.storage.profileTable,
+    });
+
+    this.activation = new ActivationConstruct(this, 'Activation', {
+      destinationQueue: this.processing.destinationQueue,
       profileTable: this.storage.profileTable,
     });
 

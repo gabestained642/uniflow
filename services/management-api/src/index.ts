@@ -6,9 +6,10 @@ import {
   GetCommand,
   QueryCommand,
   DeleteCommand,
+  UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { logger } from '@uniflow/logger';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { z } from 'zod';
 
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -57,7 +58,7 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
       return await listEntities('SOURCE');
     }
     if (path === '/api/sources' && method === 'POST') {
-      return await createEntity('SOURCE', SourceSchema, event.body);
+      return await createSource(event.body);
     }
     if (path.match(/^\/api\/sources\/[^/]+$/) && method === 'DELETE') {
       const id = path.split('/').pop()!;
@@ -71,6 +72,10 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
     if (path === '/api/destinations' && method === 'POST') {
       return await createEntity('DEST', DestinationSchema, event.body);
     }
+    if (path.match(/^\/api\/destinations\/[^/]+$/) && method === 'PUT') {
+      const id = path.split('/').pop()!;
+      return await updateEntity('DEST', DestinationSchema, id, event.body);
+    }
     if (path.match(/^\/api\/destinations\/[^/]+$/) && method === 'DELETE') {
       const id = path.split('/').pop()!;
       return await deleteEntity('DEST', id);
@@ -82,6 +87,14 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
     }
     if (path === '/api/segments' && method === 'POST') {
       return await createEntity('SEGMENT', SegmentSchema, event.body);
+    }
+    if (path.match(/^\/api\/segments\/[^/]+$/) && method === 'PUT') {
+      const id = path.split('/').pop()!;
+      return await updateEntity('SEGMENT', SegmentSchema, id, event.body);
+    }
+    if (path.match(/^\/api\/segments\/[^/]+\/members$/) && method === 'GET') {
+      const id = path.split('/')[3];
+      return await getSegmentMembers(id);
     }
     if (path.match(/^\/api\/segments\/[^/]+$/) && method === 'DELETE') {
       const id = path.split('/').pop()!;
@@ -110,6 +123,36 @@ async function listEntities(prefix: string): Promise<APIGatewayProxyResultV2> {
     })
   );
   return json(200, { items: result.Items ?? [] });
+}
+
+async function createSource(body: string | undefined): Promise<APIGatewayProxyResultV2> {
+  if (!body) return json(400, { error: 'Missing body' });
+
+  const parsed = SourceSchema.parse(JSON.parse(body));
+  const id = randomUUID();
+  const now = new Date().toISOString();
+
+  const writeKey = `wk_${randomUUID().replace(/-/g, '')}`;
+  const writeKeyHash = createHash('sha256').update(writeKey).digest('hex');
+
+  await dynamo.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        pk: `SOURCE#${id}`,
+        sk: 'META',
+        id,
+        ...parsed,
+        writeKeyHash,
+        gsi1pk: `WRITEKEY#${writeKeyHash}`,
+        gsi1sk: 'META',
+        createdAt: now,
+        updatedAt: now,
+      },
+    })
+  );
+
+  return json(201, { id, ...parsed, writeKey });
 }
 
 async function createEntity(
@@ -151,6 +194,63 @@ async function deleteEntity(
     })
   );
   return json(200, { success: true });
+}
+
+async function updateEntity(
+  prefix: string,
+  schema: z.ZodSchema,
+  id: string,
+  body: string | undefined
+): Promise<APIGatewayProxyResultV2> {
+  if (!body) return json(400, { error: 'Missing body' });
+
+  const parsed = schema.parse(JSON.parse(body));
+  const now = new Date().toISOString();
+
+  const expressionParts: string[] = [];
+  const expressionNames: Record<string, string> = {};
+  const expressionValues: Record<string, unknown> = {};
+
+  Object.entries(parsed).forEach(([key, value], index) => {
+    const nameAlias = `#f${index}`;
+    const valueAlias = `:v${index}`;
+    expressionParts.push(`${nameAlias} = ${valueAlias}`);
+    expressionNames[nameAlias] = key;
+    expressionValues[valueAlias] = value;
+  });
+
+  expressionParts.push('#updatedAt = :updatedAt');
+  expressionNames['#updatedAt'] = 'updatedAt';
+  expressionValues[':updatedAt'] = now;
+
+  const result = await dynamo.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { pk: `${prefix}#${id}`, sk: 'META' },
+      UpdateExpression: `SET ${expressionParts.join(', ')}`,
+      ExpressionAttributeNames: expressionNames,
+      ExpressionAttributeValues: expressionValues,
+      ReturnValues: 'ALL_NEW',
+    })
+  );
+
+  return json(200, result.Attributes);
+}
+
+async function getSegmentMembers(id: string): Promise<APIGatewayProxyResultV2> {
+  const result = await dynamo.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)',
+      ExpressionAttributeValues: {
+        ':pk': `SEGMENT#${id}`,
+        ':prefix': 'MEMBER#',
+      },
+    })
+  );
+
+  const members = (result.Items ?? []).map((item) => item.userId);
+  return json(200, { members });
 }
 
 async function getProfile(userId: string): Promise<APIGatewayProxyResultV2> {

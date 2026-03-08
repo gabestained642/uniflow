@@ -25,3 +25,10 @@ export interface PageOptions {
   userId?: string;
   anonymousId?: string;
 }
+
+export interface GroupOptions {
+  groupId: string;
+  userId?: string;
+  anonymousId?: string;
+  traits?: Record<string, unknown>;
+}
