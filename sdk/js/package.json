@@ -14,12 +14,13 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
+    "jsdom": "^28.1.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
   }

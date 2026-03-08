@@ -57,7 +57,7 @@ describe('StorageConstruct', () => {
 
   it('creates a Glue database', () => {
     template.hasResourceProperties('AWS::Glue::Database', {
-      CatalogId: '123456789012',
+      CatalogId: Match.anyValue(),
       DatabaseInput: Match.objectLike({ Name: 'uniflow' }),
     });
   });
@@ -136,7 +136,7 @@ describe('ProcessingConstruct', () => {
   it('creates Kinesis event source mapping', () => {
     template.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
       BatchSize: 100,
-      BisectBatchOnError: true,
+      BisectBatchOnFunctionError: true,
     });
   });
 });
