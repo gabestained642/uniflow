@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+const requireActor = (data: { anonymousId?: string; userId?: string }) =>
+  Boolean(data.anonymousId || data.userId);
+
+const requireActorMessage = 'Either anonymousId or userId must be provided';
+
 // Base fields present on all events (Segment-compatible schema)
 const BaseEventSchema = z.object({
   anonymousId: z.string().optional(),
@@ -31,22 +36,20 @@ const BaseEventSchema = z.object({
     })
     .optional(),
   writeKey: z.string().optional(),
-}).refine((data) => data.anonymousId || data.userId, {
-  message: 'Either anonymousId or userId must be provided',
 });
 
-export const TrackEventSchema = BaseEventSchema.extend({
+const TrackEventObjectSchema = BaseEventSchema.extend({
   type: z.literal('track'),
   event: z.string().min(1),
   properties: z.record(z.unknown()).optional(),
 });
 
-export const IdentifyEventSchema = BaseEventSchema.extend({
+const IdentifyEventObjectSchema = BaseEventSchema.extend({
   type: z.literal('identify'),
   traits: z.record(z.unknown()).optional(),
 });
 
-export const PageEventSchema = BaseEventSchema.extend({
+const PageEventObjectSchema = BaseEventSchema.extend({
   type: z.literal('page'),
   name: z.string().optional(),
   properties: z
@@ -60,22 +63,46 @@ export const PageEventSchema = BaseEventSchema.extend({
     .optional(),
 });
 
-export const ScreenEventSchema = BaseEventSchema.extend({
+const ScreenEventObjectSchema = BaseEventSchema.extend({
   type: z.literal('screen'),
   name: z.string().optional(),
   properties: z.record(z.unknown()).optional(),
 });
 
-export const GroupEventSchema = BaseEventSchema.extend({
+const GroupEventObjectSchema = BaseEventSchema.extend({
   type: z.literal('group'),
   groupId: z.string(),
   traits: z.record(z.unknown()).optional(),
 });
 
-export const AnyEventSchema = z.discriminatedUnion('type', [
-  TrackEventSchema,
-  IdentifyEventSchema,
-  PageEventSchema,
-  ScreenEventSchema,
-  GroupEventSchema,
-]);
+export const TrackEventSchema = TrackEventObjectSchema.refine(requireActor, {
+  message: requireActorMessage,
+});
+
+export const IdentifyEventSchema = IdentifyEventObjectSchema.refine(requireActor, {
+  message: requireActorMessage,
+});
+
+export const PageEventSchema = PageEventObjectSchema.refine(requireActor, {
+  message: requireActorMessage,
+});
+
+export const ScreenEventSchema = ScreenEventObjectSchema.refine(requireActor, {
+  message: requireActorMessage,
+});
+
+export const GroupEventSchema = GroupEventObjectSchema.refine(requireActor, {
+  message: requireActorMessage,
+});
+
+export const AnyEventSchema = z
+  .discriminatedUnion('type', [
+    TrackEventObjectSchema,
+    IdentifyEventObjectSchema,
+    PageEventObjectSchema,
+    ScreenEventObjectSchema,
+    GroupEventObjectSchema,
+  ])
+  .refine(requireActor, {
+    message: requireActorMessage,
+  });

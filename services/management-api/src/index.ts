@@ -1,4 +1,7 @@
-import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyStructuredResultV2,
+} from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
@@ -14,7 +17,7 @@ import { z } from 'zod';
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const TABLE_NAME = process.env.PROFILE_TABLE_NAME!;
 
-function json(statusCode: number, body: unknown): APIGatewayProxyResultV2 {
+function json(statusCode: number, body: unknown): APIGatewayProxyStructuredResultV2 {
   return {
     statusCode,
     headers: { 'Content-Type': 'application/json' },
@@ -46,7 +49,9 @@ const SegmentSchema = z.object({
   ),
 });
 
-export async function handler(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
+export async function handler(
+  event: APIGatewayProxyEventV2
+): Promise<APIGatewayProxyStructuredResultV2> {
   const log = logger.child({ path: event.requestContext.http.path });
   const method = event.requestContext.http.method;
   const path = event.requestContext.http.path;
@@ -113,7 +118,7 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
   }
 }
 
-async function listEntities(prefix: string): Promise<APIGatewayProxyResultV2> {
+async function listEntities(prefix: string): Promise<APIGatewayProxyStructuredResultV2> {
   const result = await dynamo.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -124,7 +129,9 @@ async function listEntities(prefix: string): Promise<APIGatewayProxyResultV2> {
   return json(200, { items: result.Items ?? [] });
 }
 
-async function createSource(body: string | undefined): Promise<APIGatewayProxyResultV2> {
+async function createSource(
+  body: string | undefined
+): Promise<APIGatewayProxyStructuredResultV2> {
   if (!body) return json(400, { error: 'Missing body' });
 
   const parsed = SourceSchema.parse(JSON.parse(body));
@@ -158,7 +165,7 @@ async function createEntity(
   prefix: string,
   schema: z.ZodSchema,
   body: string | undefined
-): Promise<APIGatewayProxyResultV2> {
+): Promise<APIGatewayProxyStructuredResultV2> {
   if (!body) return json(400, { error: 'Missing body' });
 
   const parsed = schema.parse(JSON.parse(body));
@@ -185,7 +192,7 @@ async function createEntity(
 async function deleteEntity(
   prefix: string,
   id: string
-): Promise<APIGatewayProxyResultV2> {
+): Promise<APIGatewayProxyStructuredResultV2> {
   await dynamo.send(
     new DeleteCommand({
       TableName: TABLE_NAME,
@@ -200,7 +207,7 @@ async function updateEntity(
   schema: z.ZodSchema,
   id: string,
   body: string | undefined
-): Promise<APIGatewayProxyResultV2> {
+): Promise<APIGatewayProxyStructuredResultV2> {
   if (!body) return json(400, { error: 'Missing body' });
 
   const parsed = schema.parse(JSON.parse(body));
@@ -236,7 +243,9 @@ async function updateEntity(
   return json(200, result.Attributes);
 }
 
-async function getSegmentMembers(id: string): Promise<APIGatewayProxyResultV2> {
+async function getSegmentMembers(
+  id: string
+): Promise<APIGatewayProxyStructuredResultV2> {
   const result = await dynamo.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -252,7 +261,9 @@ async function getSegmentMembers(id: string): Promise<APIGatewayProxyResultV2> {
   return json(200, { members });
 }
 
-async function getProfile(userId: string): Promise<APIGatewayProxyResultV2> {
+async function getProfile(
+  userId: string
+): Promise<APIGatewayProxyStructuredResultV2> {
   const result = await dynamo.send(
     new QueryCommand({
       TableName: TABLE_NAME,

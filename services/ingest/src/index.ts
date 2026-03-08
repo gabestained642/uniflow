@@ -1,4 +1,7 @@
-import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyStructuredResultV2,
+} from 'aws-lambda';
 import { KinesisClient, PutRecordCommand } from '@aws-sdk/client-kinesis';
 import { AnyEventSchema } from '@uniflow/event-schema';
 import { logger } from '@uniflow/logger';
@@ -7,7 +10,7 @@ import { randomUUID } from 'crypto';
 const kinesis = new KinesisClient({});
 const STREAM_NAME = process.env.KINESIS_STREAM_NAME!;
 
-function response(statusCode: number, body: unknown): APIGatewayProxyResultV2 {
+function response(statusCode: number, body: unknown): APIGatewayProxyStructuredResultV2 {
   return {
     statusCode,
     headers: { 'Content-Type': 'application/json' },
@@ -15,7 +18,9 @@ function response(statusCode: number, body: unknown): APIGatewayProxyResultV2 {
   };
 }
 
-export async function handler(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
+export async function handler(
+  event: APIGatewayProxyEventV2
+): Promise<APIGatewayProxyStructuredResultV2> {
   const log = logger.child({ requestId: event.requestContext.requestId });
 
   if (!event.body) {
