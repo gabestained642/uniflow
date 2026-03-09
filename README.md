@@ -31,7 +31,7 @@ Uniflow gives you the core features of a modern CDP — event collection, identi
 | **Event Collection** | Segment-compatible HTTP API (`track`, `identify`, `page`, `group`) |
 | **Identity Resolution** | Anonymous ID → known user ID linking with a persistent identity graph |
 | **Unified Profiles** | Merged profile with traits and full event history in DynamoDB |
-| **Segmentation** | Rule-based audiences evaluated on a schedule via Athena |
+| **Segmentation** | Rule-based audiences evaluated on a schedule via AWS Glue PySpark |
 | **Destinations** | Webhook and S3 export built-in · plugin SDK for community connectors |
 | **Admin UI** | Next.js dashboard: Sources, Destinations, Profile Explorer, Segments |
 | **CLI** | `uniflow init / deploy / status / upgrade / destroy` |
@@ -51,8 +51,8 @@ Client SDK
                                 └─▶ Lambda (connector) ──▶ External system
 
 EventBridge Scheduler (hourly)
-  └─▶ ECS Fargate (audience-builder)
-        └─▶ Athena query over S3 ──▶ DynamoDB (segment membership)
+  └─▶ Glue PySpark Job (audience-builder)
+        └─▶ S3 Parquet + DynamoDB (segment membership)
 
 Cognito ──▶ API Gateway ──▶ Lambda (management API)
 Next.js static export ──▶ S3 ──▶ CloudFront
@@ -64,7 +64,7 @@ Next.js static export ──▶ S3 ──▶ CloudFront
 |---|---|---|
 | Ingest API | Lambda | Zero idle cost, auto-scales |
 | Stream processor | Lambda | Short-lived, stateless |
-| Audience builder | ECS Fargate | Long-running Athena queries exceed Lambda limit |
+| Audience builder | AWS Glue (PySpark) | Serverless Spark for complex segment queries, no VPC needed |
 | Destination connectors | Lambda | Event-driven, short-lived |
 | Management API | Lambda | Low-traffic CRUD |
 
@@ -106,13 +106,13 @@ uniflow/
 │           ├── StorageConstruct.ts      # DynamoDB · S3 · Kinesis · Firehose
 │           ├── IngestionConstruct.ts    # API Gateway · Ingest Lambda
 │           ├── ProcessingConstruct.ts   # Kinesis consumer · SQS fan-out
-│           ├── AudienceConstruct.ts     # ECS Fargate · EventBridge Scheduler
+│           ├── AudienceConstruct.ts     # Glue PySpark Job · EventBridge Scheduler
 │           └── AdminConstruct.ts        # Cognito · CloudFront · Management API
 │
 ├── services/
 │   ├── ingest/               # Validate events → Kinesis
 │   ├── processor/            # Kinesis consumer → DynamoDB + SQS
-│   ├── audience-builder/     # Fargate: Athena → segment membership
+│   ├── audience-builder/     # Glue PySpark: segment evaluation → S3 + DynamoDB
 │   └── management-api/       # CRUD: sources · destinations · segments · profiles
 │
 ├── connectors/
@@ -137,18 +137,16 @@ uniflow/
 
 ## 📐 Data Model
 
-Single-table DynamoDB design:
+Multi-table DynamoDB design — each entity type has a dedicated table:
 
-| Entity | PK | SK |
-|---|---|---|
-| Profile | `PROFILE#<userId>` | `META` |
-| Event | `PROFILE#<userId>` | `EVENT#<ts>#<id>` |
-| Identity link | `ANON#<anonymousId>` | `IDENTITY` |
-| Segment | `SEGMENT#<id>` | `META` |
-| Segment member | `SEGMENT#<id>` | `MEMBER#<userId>` |
-| Source | `SOURCE#<id>` | `META` |
-| Destination | `DEST#<id>` | `META` |
-| Migration | `MIGRATION#<id>` | `META` |
+| Table | PK | SK | GSI |
+|---|---|---|---|
+| `profilesTable` | `userId` | `sortKey` (`META` or `EVENT#ts#id`) | — |
+| `identityTable` | `anonymousId` | — | — |
+| `sourcesTable` | `id` | — | `writeKeyHashIndex` on `writeKeyHash` |
+| `destinationsTable` | `id` | — | — |
+| `segmentsTable` | `id` | — | — |
+| `segmentMembersTable` | `segmentId` | `userId` | — |
 
 ## 💻 Local Dev
 
@@ -222,9 +220,9 @@ stackName: UnifowStack
 |---|---|
 | IaC | AWS CDK (TypeScript) |
 | Ingest | Lambda + API Gateway HTTP API |
-| Long-running compute | ECS Fargate |
+| Audience builder | AWS Glue (PySpark) |
 | Event buffer | Kinesis Data Streams (7-day retention) |
-| Hot store | DynamoDB (single-table, PAY_PER_REQUEST) |
+| Hot store | DynamoDB (multi-table, PAY_PER_REQUEST) |
 | Analytics | S3 + Athena + Glue Catalog |
 | Auth | Cognito User Pool |
 | Reliability | SQS + Dead-letter queues |

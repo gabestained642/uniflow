@@ -7,7 +7,7 @@ import {
 } from '@aws-sdk/client-athena';
 import {
   DynamoDBDocumentClient,
-  QueryCommand,
+  ScanCommand,
   PutCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { logger } from '@uniflow/logger';
@@ -21,7 +21,8 @@ export class SegmentEvaluator {
   constructor(
     private readonly athena: AthenaClient,
     private readonly dynamo: DynamoDBDocumentClient,
-    private readonly tableName: string,
+    private readonly segmentsTableName: string,
+    private readonly segmentMembersTableName: string,
     private readonly rawBucket: string,
     private readonly athenaOutputBucket: string,
     private readonly athenaDatabase: string = 'uniflow'
@@ -43,10 +44,8 @@ export class SegmentEvaluator {
 
   private async loadSegments(): Promise<Segment[]> {
     const result = await this.dynamo.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        KeyConditionExpression: 'begins_with(pk, :prefix) AND sk = :meta',
-        ExpressionAttributeValues: { ':prefix': 'SEGMENT#', ':meta': 'META' },
+      new ScanCommand({
+        TableName: this.segmentsTableName,
       })
     );
     return (result.Items ?? []) as Segment[];
@@ -123,10 +122,9 @@ export class SegmentEvaluator {
       userIds.map((userId) =>
         this.dynamo.send(
           new PutCommand({
-            TableName: this.tableName,
+            TableName: this.segmentMembersTableName,
             Item: {
-              pk: `SEGMENT#${segmentId}`,
-              sk: `MEMBER#${userId}`,
+              segmentId,
               userId,
               addedAt: now,
             },

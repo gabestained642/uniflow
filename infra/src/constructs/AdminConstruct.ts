@@ -8,12 +8,18 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as path from 'path';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { Construct } from 'constructs';
 
 export interface AdminConstructProps {
   adminEmail: string;
-  profileTable: dynamodb.Table;
+  profilesTable: dynamodb.Table;
+  sourcesTable: dynamodb.Table;
+  destinationsTable: dynamodb.Table;
+  segmentsTable: dynamodb.Table;
+  segmentMembersTable: dynamodb.Table;
 }
 
 export class AdminConstruct extends Construct {
@@ -64,7 +70,11 @@ export class AdminConstruct extends Construct {
         path.join(__dirname, '../../../services/management-api/dist')
       ),
       environment: {
-        PROFILE_TABLE_NAME: props.profileTable.tableName,
+        PROFILES_TABLE_NAME: props.profilesTable.tableName,
+        SOURCES_TABLE_NAME: props.sourcesTable.tableName,
+        DESTINATIONS_TABLE_NAME: props.destinationsTable.tableName,
+        SEGMENTS_TABLE_NAME: props.segmentsTable.tableName,
+        SEGMENT_MEMBERS_TABLE_NAME: props.segmentMembersTable.tableName,
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         LOG_LEVEL: 'info',
@@ -73,7 +83,11 @@ export class AdminConstruct extends Construct {
       memorySize: 256,
     });
 
-    props.profileTable.grantReadWriteData(managementFn);
+    props.profilesTable.grantReadWriteData(managementFn);
+    props.sourcesTable.grantReadWriteData(managementFn);
+    props.destinationsTable.grantReadWriteData(managementFn);
+    props.segmentsTable.grantReadWriteData(managementFn);
+    props.segmentMembersTable.grantReadWriteData(managementFn);
 
     // HTTP API for management
     const api = new apigwv2.HttpApi(this, 'ManagementApi', {
@@ -133,6 +147,22 @@ export class AdminConstruct extends Construct {
     });
 
     this.cloudFrontUrl = `https://${distribution.distributionDomainName}`;
+
+    // Handle missing ui/out/ at synth time
+    const uiAssetPath = path.join(__dirname, '../../../ui/out');
+    if (!existsSync(uiAssetPath)) {
+      mkdirSync(uiAssetPath, { recursive: true });
+      writeFileSync(path.join(uiAssetPath, 'index.html'),
+        '<html><body>UI not built yet. Run: pnpm --filter @uniflow/ui build</body></html>');
+    }
+
+    new s3deploy.BucketDeployment(this, 'DeployUi', {
+      sources: [s3deploy.Source.asset(uiAssetPath)],
+      destinationBucket: uiBucket,
+      distribution,
+      distributionPaths: ['/*'],
+      memoryLimit: 256,
+    });
 
     // Outputs
     new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });

@@ -11,10 +11,11 @@ import { upsertProfile } from './profileUpsert';
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const sqs = new SQSClient({});
 
-const TABLE_NAME = process.env.PROFILE_TABLE_NAME!;
+const PROFILES_TABLE_NAME = process.env.PROFILES_TABLE_NAME!;
+const IDENTITY_TABLE_NAME = process.env.IDENTITY_TABLE_NAME!;
 const DEST_QUEUE_URL = process.env.DESTINATION_QUEUE_URL!;
 
-const identityGraph = new DynamoIdentityGraph(dynamo, TABLE_NAME);
+const identityGraph = new DynamoIdentityGraph(dynamo, IDENTITY_TABLE_NAME);
 const resolver = new IdentityResolver(identityGraph);
 
 export async function handler(event: KinesisStreamEvent): Promise<void> {
@@ -33,7 +34,7 @@ export async function handler(event: KinesisStreamEvent): Promise<void> {
         const userId = identity.userId ?? parsed.anonymousId ?? 'unknown';
 
         // Upsert profile and event history
-        await upsertProfile(dynamo, TABLE_NAME, userId, parsed);
+        await upsertProfile(dynamo, PROFILES_TABLE_NAME, userId, parsed);
 
         if (identity.isNewLink) {
           log.info('Identity linked', {

@@ -11,7 +11,7 @@ export class DynamoIdentityGraph implements IdentityGraph {
     const result = await this.dynamo.send(
       new GetCommand({
         TableName: this.tableName,
-        Key: { pk: `ANON#${anonymousId}`, sk: 'IDENTITY' },
+        Key: { anonymousId },
       })
     );
     return (result.Item?.userId as string) ?? null;
@@ -22,8 +22,7 @@ export class DynamoIdentityGraph implements IdentityGraph {
       new PutCommand({
         TableName: this.tableName,
         Item: {
-          pk: `ANON#${anonymousId}`,
-          sk: 'IDENTITY',
+          anonymousId,
           userId,
           mergedAt: new Date().toISOString(),
         },

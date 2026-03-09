@@ -1,50 +1,63 @@
 ---
 title: Data Model
-description: DynamoDB single-table design and entity types.
+description: DynamoDB multi-table design and entity types.
 ---
 
-Uniflow uses a **single-table DynamoDB design** for all operational data. This maximizes performance by colocating related data and minimizing table count.
+Uniflow uses a **multi-table DynamoDB design** with 6 dedicated tables. Each entity type has its own table for clarity and independent scaling.
 
-## Entity types
+## Tables
 
-| Entity | PK | SK | Description |
-|--------|----|----|-------------|
-| Profile | `PROFILE#<userId>` | `META` | User profile with merged traits |
-| Event | `PROFILE#<userId>` | `EVENT#<ts>#<id>` | Individual tracked event |
-| Identity link | `ANON#<anonymousId>` | `IDENTITY` | Maps anonymous → known user |
-| Segment | `SEGMENT#<id>` | `META` | Segment definition (rules) |
-| Segment member | `SEGMENT#<id>` | `MEMBER#<userId>` | User-segment membership |
-| Source | `SOURCE#<id>` | `META` | Event source (write key) |
-| Destination | `DEST#<id>` | `META` | Destination connector config |
-| Migration | `MIGRATION#<id>` | `META` | Schema migration record |
+| Table | PK | SK | GSI | Description |
+|-------|----|----|-----|-------------|
+| `profilesTable` | `userId` (S) | `sortKey` (S) | — | User profile (`META`) and event history (`EVENT#ts#id`). TTL enabled, PITR |
+| `identityTable` | `anonymousId` (S) | — | — | Maps anonymous visitor → known userId |
+| `sourcesTable` | `id` (S) | — | `writeKeyHashIndex` on `writeKeyHash` | Event sources with write-key auth |
+| `destinationsTable` | `id` (S) | — | — | Destination connector configurations |
+| `segmentsTable` | `id` (S) | — | — | Segment definitions (rules) |
+| `segmentMembersTable` | `segmentId` (S) | `userId` (S) | — | User-segment membership records |
+
+All tables use `PAY_PER_REQUEST` billing and `RETAIN` removal policy.
 
 ## Access patterns
 
 ### Profile lookup
 
 ```
-PK = PROFILE#user_123, SK = META
+Table: profilesTable
+Key: { userId: "user_123", sortKey: "META" }
 → Returns merged profile with all traits
 ```
 
 ### User event history
 
 ```
-PK = PROFILE#user_123, SK begins_with EVENT#
+Table: profilesTable
+Key: { userId: "user_123", sortKey begins_with "EVENT#" }
 → Returns all events for user, sorted by timestamp
 ```
 
 ### Identity resolution
 
 ```
-PK = ANON#abc-123, SK = IDENTITY
+Table: identityTable
+Key: { anonymousId: "abc-123" }
 → Returns the linked userId for an anonymous visitor
+```
+
+### Write-key authentication
+
+```
+Table: sourcesTable
+GSI: writeKeyHashIndex
+Key: { writeKeyHash: "<sha256>" }
+→ Returns the source matching a write key
 ```
 
 ### Segment members
 
 ```
-PK = SEGMENT#seg_456, SK begins_with MEMBER#
+Table: segmentMembersTable
+Key: { segmentId: "seg_456" }
 → Returns all users in a segment
 ```
 
@@ -61,7 +74,7 @@ s3://uniflow-events-{account}/
           events-00001.json.gz
 ```
 
-This data lake powers Athena queries for audience segmentation. A Glue Catalog table provides the schema for SQL access.
+This data lake powers the Glue PySpark audience builder for segment evaluation. A Glue Catalog table provides the schema for SQL access. Segment membership results are also written to S3 as Parquet files under `s3://{processed-bucket}/segments/{segment_id}/members.parquet`.
 
 ## Billing mode
 

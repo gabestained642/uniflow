@@ -7,7 +7,7 @@ const dynamoMock = mockClient(DynamoDBDocumentClient);
 
 beforeEach(() => {
   dynamoMock.reset();
-  process.env.PROFILE_TABLE_NAME = 'test-table';
+  process.env.SOURCES_TABLE_NAME = 'test-sources-table';
 });
 
 function mockEvent(authHeader?: string): any {

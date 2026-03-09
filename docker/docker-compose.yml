@@ -6,7 +6,7 @@ services:
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=dynamodb,s3,kinesis,sqs,firehose,athena
+      - SERVICES=dynamodb,s3,kinesis,sqs,firehose,athena,glue
       - DEBUG=0
       - DATA_DIR=/var/lib/localstack/data
       - AWS_DEFAULT_REGION=us-east-1
@@ -20,7 +20,8 @@ services:
       context: ../services/audience-builder
       dockerfile: Dockerfile
     environment:
-      - PROFILE_TABLE_NAME=uniflow-profiles
+      - SEGMENTS_TABLE_NAME=uniflow-segments
+      - SEGMENT_MEMBERS_TABLE_NAME=uniflow-segment-members
       - RAW_BUCKET_NAME=uniflow-raw
       - ATHENA_OUTPUT_BUCKET=uniflow-processed
       - AWS_DEFAULT_REGION=us-east-1

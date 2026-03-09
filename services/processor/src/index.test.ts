@@ -9,7 +9,8 @@ const sqsMock = mockClient(SQSClient);
 beforeEach(() => {
   dynamoMock.reset();
   sqsMock.reset();
-  process.env.PROFILE_TABLE_NAME = 'test-table';
+  process.env.PROFILES_TABLE_NAME = 'test-profiles-table';
+  process.env.IDENTITY_TABLE_NAME = 'test-identity-table';
   process.env.DESTINATION_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123/test-queue';
 });
 
@@ -77,10 +78,10 @@ describe('processor handler', () => {
       ],
     } as any);
 
-    // Should link identity (PutCommand for ANON# record)
+    // Should link identity (PutCommand for identity record)
     const putCalls = dynamoMock.commandCalls(PutCommand);
     const identityPut = putCalls.find(
-      (c) => c.args[0].input.Item?.pk?.startsWith('ANON#')
+      (c) => c.args[0].input.Item?.anonymousId === 'anon_1'
     );
     expect(identityPut).toBeDefined();
   });

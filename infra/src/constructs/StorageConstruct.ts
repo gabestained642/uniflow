@@ -13,32 +13,72 @@ export interface StorageConstructProps {
 }
 
 export class StorageConstruct extends Construct {
-  public readonly profileTable: dynamodb.Table;
+  public readonly profilesTable: dynamodb.Table;
+  public readonly identityTable: dynamodb.Table;
+  public readonly sourcesTable: dynamodb.Table;
+  public readonly destinationsTable: dynamodb.Table;
+  public readonly segmentsTable: dynamodb.Table;
+  public readonly segmentMembersTable: dynamodb.Table;
   public readonly eventStream: kinesis.Stream;
   public readonly rawBucket: s3.Bucket;
   public readonly processedBucket: s3.Bucket;
   public readonly glueDatabase: glue.CfnDatabase;
   public readonly glueTable: glue.CfnTable;
+  public readonly segmentMembersGlueTable: glue.CfnTable;
   public readonly encryptionKey: kms.Key;
 
   constructor(scope: Construct, id: string, props: StorageConstructProps) {
     super(scope, id);
 
-    // DynamoDB single-table design
-    this.profileTable = new dynamodb.Table(this, 'ProfileTable', {
-      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+    // Profiles table — stores profile metadata and event history
+    this.profilesTable = new dynamodb.Table(this, 'ProfilesTable', {
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'sortKey', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       pointInTimeRecovery: true,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       timeToLiveAttribute: 'ttl',
     });
 
-    // GSI for segment membership queries
-    this.profileTable.addGlobalSecondaryIndex({
-      indexName: 'gsi1',
-      partitionKey: { name: 'gsi1pk', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'gsi1sk', type: dynamodb.AttributeType.STRING },
+    // Identity table — maps anonymousId → userId
+    this.identityTable = new dynamodb.Table(this, 'IdentityTable', {
+      partitionKey: { name: 'anonymousId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // Sources table — write-key authenticated event sources
+    this.sourcesTable = new dynamodb.Table(this, 'SourcesTable', {
+      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    this.sourcesTable.addGlobalSecondaryIndex({
+      indexName: 'writeKeyHashIndex',
+      partitionKey: { name: 'writeKeyHash', type: dynamodb.AttributeType.STRING },
+    });
+
+    // Destinations table — connector configurations
+    this.destinationsTable = new dynamodb.Table(this, 'DestinationsTable', {
+      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // Segments table — segment definitions
+    this.segmentsTable = new dynamodb.Table(this, 'SegmentsTable', {
+      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // Segment members table — membership records from audience builder
+    this.segmentMembersTable = new dynamodb.Table(this, 'SegmentMembersTable', {
+      partitionKey: { name: 'segmentId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     // Kinesis Data Stream (7-day retention)
@@ -153,6 +193,39 @@ export class StorageConstruct extends Construct {
       },
     });
     this.glueTable.addDependency(this.glueDatabase);
+
+    // Glue table for segment membership results (Parquet on S3)
+    this.segmentMembersGlueTable = new glue.CfnTable(this, 'SegmentMembersGlueTable', {
+      catalogId: cdk.Aws.ACCOUNT_ID,
+      databaseName: 'uniflow',
+      tableInput: {
+        name: 'uniflow_segment_members',
+        description: 'Segment membership computed by audience builder (Parquet)',
+        tableType: 'EXTERNAL_TABLE',
+        parameters: {
+          'classification': 'parquet',
+          'typeOfData': 'file',
+        },
+        storageDescriptor: {
+          location: `s3://${this.processedBucket.bucketName}/segments/`,
+          inputFormat: 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat',
+          outputFormat: 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat',
+          compressed: false,
+          serdeInfo: {
+            serializationLibrary: 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe',
+          },
+          columns: [
+            { name: 'segment_id', type: 'string' },
+            { name: 'user_id', type: 'string' },
+            { name: 'added_at', type: 'string' },
+          ],
+        },
+        partitionKeys: [
+          { name: 'segment_id', type: 'string' },
+        ],
+      },
+    });
+    this.segmentMembersGlueTable.addDependency(this.glueDatabase);
 
     // -------------------------------------------------------
     // KMS key — encrypts Secrets Manager destination credentials

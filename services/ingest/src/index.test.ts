@@ -10,12 +10,13 @@ beforeEach(() => {
   process.env.KINESIS_STREAM_NAME = 'test-stream';
 });
 
-function mockEvent(path: string, body: unknown) {
+function mockEvent(path: string, body: unknown, authorizer?: Record<string, unknown>) {
   return {
     body: JSON.stringify(body),
     requestContext: {
       requestId: 'req_123',
       http: { path },
+      authorizer: authorizer ?? { lambda: { sourceId: 'src_test' } },
     },
   } as any;
 }
@@ -41,6 +42,46 @@ describe('ingest handler', () => {
 
     expect(result.statusCode).toBe(200);
     expect(kinesisMock.calls()).toHaveLength(1);
+  });
+
+  it('enriches Kinesis payload with sourceId and receivedAt', async () => {
+    kinesisMock.on(PutRecordCommand).resolves({ ShardId: 'shard-0', SequenceNumber: '1' });
+
+    await handler(
+      mockEvent('/v1/track', {
+        type: 'track',
+        event: 'Button Clicked',
+        userId: 'user_123',
+        messageId: 'msg_abc',
+        timestamp: '2024-01-01T00:00:00.000Z',
+      })
+    );
+
+    const call = kinesisMock.calls()[0];
+    const payload = JSON.parse(Buffer.from((call.args[0].input as { Data: Uint8Array }).Data).toString());
+    expect(payload.sourceId).toBe('src_test');
+    expect(payload.receivedAt).toBeDefined();
+    expect(() => new Date(payload.receivedAt).toISOString()).not.toThrow();
+  });
+
+  it('processes event without authorizer context', async () => {
+    kinesisMock.on(PutRecordCommand).resolves({ ShardId: 'shard-0', SequenceNumber: '1' });
+
+    const result = await handler(
+      mockEvent('/v1/track', {
+        type: 'track',
+        event: 'Button Clicked',
+        userId: 'user_123',
+        messageId: 'msg_def',
+        timestamp: '2024-01-01T00:00:00.000Z',
+      }, { lambda: {} })
+    );
+
+    expect(result.statusCode).toBe(200);
+    const call = kinesisMock.calls()[0];
+    const payload = JSON.parse(Buffer.from((call.args[0].input as { Data: Uint8Array }).Data).toString());
+    expect(payload.sourceId).toBeUndefined();
+    expect(payload.receivedAt).toBeDefined();
   });
 
   it('returns 400 for invalid event', async () => {

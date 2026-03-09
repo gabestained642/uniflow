@@ -21,13 +21,14 @@ export async function runMigrations(config: Config): Promise<void> {
   );
 
   const migrations = await loadMigrations();
+  const tableName = `${config.stackName}-profiles`;
 
   for (const migration of migrations) {
-    const key = { pk: `MIGRATION#${migration.id}`, sk: 'META' };
+    const key = { userId: `_MIGRATION#${migration.id}`, sortKey: 'META' };
 
     // Check if already run
     const existing = await dynamo.send(
-      new GetCommand({ TableName: `${config.stackName}-profiles`, Key: key })
+      new GetCommand({ TableName: tableName, Key: key })
     ).catch(() => null);
 
     if (existing?.Item?.completedAt) {
@@ -39,7 +40,7 @@ export async function runMigrations(config: Config): Promise<void> {
 
     await dynamo.send(
       new PutCommand({
-        TableName: `${config.stackName}-profiles`,
+        TableName: tableName,
         Item: {
           ...key,
           description: migration.description,

@@ -7,16 +7,17 @@ import { SegmentEvaluator } from './SegmentEvaluator.js';
 const log = logger.child({ service: 'audience-builder' });
 
 async function main(): Promise<void> {
-  const tableName = process.env.PROFILE_TABLE_NAME;
+  const segmentsTableName = process.env.SEGMENTS_TABLE_NAME;
+  const segmentMembersTableName = process.env.SEGMENT_MEMBERS_TABLE_NAME;
   const rawBucket = process.env.RAW_BUCKET_NAME;
   const athenaOutputBucket = process.env.ATHENA_OUTPUT_BUCKET ?? rawBucket;
   const region = process.env.AWS_REGION ?? 'us-east-1';
 
-  if (!tableName || !rawBucket) {
-    throw new Error('PROFILE_TABLE_NAME and RAW_BUCKET_NAME are required');
+  if (!segmentsTableName || !segmentMembersTableName || !rawBucket) {
+    throw new Error('SEGMENTS_TABLE_NAME, SEGMENT_MEMBERS_TABLE_NAME, and RAW_BUCKET_NAME are required');
   }
 
-  log.info('Audience builder starting', { tableName, rawBucket });
+  log.info('Audience builder starting', { segmentsTableName, segmentMembersTableName, rawBucket });
 
   const athena = new AthenaClient({ region });
   const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ region }));
@@ -24,7 +25,8 @@ async function main(): Promise<void> {
   const evaluator = new SegmentEvaluator(
     athena,
     dynamo,
-    tableName,
+    segmentsTableName,
+    segmentMembersTableName,
     rawBucket,
     athenaOutputBucket!
   );

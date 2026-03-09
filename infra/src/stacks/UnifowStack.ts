@@ -33,27 +33,35 @@ export class UnifowStack extends cdk.Stack {
 
     this.ingestion = new IngestionConstruct(this, 'Ingestion', {
       eventStream: this.storage.eventStream,
-      profileTable: this.storage.profileTable,
+      sourcesTable: this.storage.sourcesTable,
     });
 
     this.processing = new ProcessingConstruct(this, 'Processing', {
       eventStream: this.storage.eventStream,
-      profileTable: this.storage.profileTable,
+      profilesTable: this.storage.profilesTable,
+      identityTable: this.storage.identityTable,
     });
 
     this.audience = new AudienceConstruct(this, 'Audience', {
-      profileTable: this.storage.profileTable,
+      segmentsTable: this.storage.segmentsTable,
+      segmentMembersTable: this.storage.segmentMembersTable,
       rawBucket: this.storage.rawBucket,
+      processedBucket: this.storage.processedBucket,
+      glueDatabase: this.storage.glueDatabase,
     });
 
     this.admin = new AdminConstruct(this, 'Admin', {
       adminEmail: props.adminEmail,
-      profileTable: this.storage.profileTable,
+      profilesTable: this.storage.profilesTable,
+      sourcesTable: this.storage.sourcesTable,
+      destinationsTable: this.storage.destinationsTable,
+      segmentsTable: this.storage.segmentsTable,
+      segmentMembersTable: this.storage.segmentMembersTable,
     });
 
     this.activation = new ActivationConstruct(this, 'Activation', {
       destinationQueue: this.processing.destinationQueue,
-      profileTable: this.storage.profileTable,
+      destinationsTable: this.storage.destinationsTable,
     });
 
     // Outputs

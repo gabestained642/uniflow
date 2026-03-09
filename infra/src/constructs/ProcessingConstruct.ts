@@ -9,7 +9,8 @@ import { Construct } from 'constructs';
 
 export interface ProcessingConstructProps {
   eventStream: kinesis.Stream;
-  profileTable: dynamodb.Table;
+  profilesTable: dynamodb.Table;
+  identityTable: dynamodb.Table;
 }
 
 export class ProcessingConstruct extends Construct {
@@ -37,7 +38,8 @@ export class ProcessingConstruct extends Construct {
         path.join(__dirname, '../../../services/processor/dist')
       ),
       environment: {
-        PROFILE_TABLE_NAME: props.profileTable.tableName,
+        PROFILES_TABLE_NAME: props.profilesTable.tableName,
+        IDENTITY_TABLE_NAME: props.identityTable.tableName,
         DESTINATION_QUEUE_URL: this.destinationQueue.queueUrl,
         LOG_LEVEL: 'info',
       },
@@ -45,7 +47,8 @@ export class ProcessingConstruct extends Construct {
       memorySize: 512,
     });
 
-    props.profileTable.grantReadWriteData(processorFn);
+    props.profilesTable.grantReadWriteData(processorFn);
+    props.identityTable.grantReadWriteData(processorFn);
     this.destinationQueue.grantSendMessages(processorFn);
 
     // Kinesis event source

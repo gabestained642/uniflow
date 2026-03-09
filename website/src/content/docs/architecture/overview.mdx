@@ -19,7 +19,7 @@ Client SDK
                                 └─▶ Lambda (connector) ──▶ External system
 
 EventBridge Scheduler (hourly)
-  └─▶ ECS Fargate (audience-builder)
+  └─▶ Glue PySpark Job (audience-builder)
         └─▶ Athena query over S3 ──▶ DynamoDB (segment membership)
 
 Cognito ──▶ API Gateway ──▶ Lambda (management API)
@@ -48,7 +48,7 @@ Next.js static export ──▶ S3 ──▶ CloudFront
 ### Segmentation
 
 9. **EventBridge Scheduler** triggers hourly
-10. **ECS Fargate** runs the audience-builder, which queries S3 via Athena and writes segment membership to DynamoDB
+10. **AWS Glue** runs the audience-builder PySpark job, which reads S3 via Spark SQL and writes segment membership to both S3 (Parquet) and DynamoDB
 
 ### Admin
 
@@ -61,6 +61,6 @@ Next.js static export ──▶ S3 ──▶ CloudFront
 |-----------|---------|-----|
 | Ingest API | Lambda | Zero idle cost, auto-scales |
 | Stream processor | Lambda | Short-lived, stateless |
-| Audience builder | ECS Fargate | Long-running Athena queries exceed Lambda's 15-min limit |
+| Audience builder | AWS Glue (PySpark) | Serverless Spark for complex segment queries, no VPC needed |
 | Destination connectors | Lambda | Event-driven, short-lived |
 | Management API | Lambda | Low-traffic CRUD |

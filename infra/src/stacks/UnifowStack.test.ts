@@ -11,6 +11,8 @@ const services = ['authorizer', 'ingest', 'processor', 'connector', 'management-
 for (const svc of services) {
   mkdirSync(join(__dirname, `../../../services/${svc}/dist`), { recursive: true });
 }
+mkdirSync(join(__dirname, '../../../ui/out'), { recursive: true });
+mkdirSync(join(__dirname, '../../../services/audience-builder/glue'), { recursive: true });
 
 function createTemplate(): Template {
   const app = new cdk.App();
@@ -30,21 +32,34 @@ describe('UnifowStack', () => {
 describe('StorageConstruct', () => {
   const template = createTemplate();
 
-  it('creates a DynamoDB table with PAY_PER_REQUEST billing', () => {
+  it('creates 6 DynamoDB tables', () => {
+    template.resourceCountIs('AWS::DynamoDB::Table', 6);
+  });
+
+  it('creates profiles table with userId/sortKey schema', () => {
     template.hasResourceProperties('AWS::DynamoDB::Table', {
       BillingMode: 'PAY_PER_REQUEST',
       KeySchema: [
-        { AttributeName: 'pk', KeyType: 'HASH' },
-        { AttributeName: 'sk', KeyType: 'RANGE' },
+        { AttributeName: 'userId', KeyType: 'HASH' },
+        { AttributeName: 'sortKey', KeyType: 'RANGE' },
       ],
     });
   });
 
-  it('creates DynamoDB table with GSI', () => {
+  it('creates sources table with writeKeyHashIndex GSI', () => {
     template.hasResourceProperties('AWS::DynamoDB::Table', {
       GlobalSecondaryIndexes: Match.arrayWith([
-        Match.objectLike({ IndexName: 'gsi1' }),
+        Match.objectLike({ IndexName: 'writeKeyHashIndex' }),
       ]),
+    });
+  });
+
+  it('creates segment members table with segmentId/userId schema', () => {
+    template.hasResourceProperties('AWS::DynamoDB::Table', {
+      KeySchema: [
+        { AttributeName: 'segmentId', KeyType: 'HASH' },
+        { AttributeName: 'userId', KeyType: 'RANGE' },
+      ],
     });
   });
 
@@ -71,9 +86,12 @@ describe('StorageConstruct', () => {
     });
   });
 
-  it('creates a Glue table for raw events', () => {
+  it('creates Glue tables for raw events and segment members', () => {
     template.hasResourceProperties('AWS::Glue::Table', {
       TableInput: Match.objectLike({ Name: 'uniflow_raw_events' }),
+    });
+    template.hasResourceProperties('AWS::Glue::Table', {
+      TableInput: Match.objectLike({ Name: 'uniflow_segment_members' }),
     });
   });
 
@@ -153,16 +171,22 @@ describe('ProcessingConstruct', () => {
 describe('AudienceConstruct', () => {
   const template = createTemplate();
 
-  it('creates an ECS cluster', () => {
-    template.resourceCountIs('AWS::ECS::Cluster', 1);
+  it('creates a Glue job for segment evaluation', () => {
+    template.hasResourceProperties('AWS::Glue::Job', {
+      Name: 'uniflow-segment-evaluator',
+      GlueVersion: '4.0',
+      WorkerType: 'G.1X',
+      NumberOfWorkers: 2,
+    });
   });
 
-  it('creates a Fargate task definition', () => {
-    template.hasResourceProperties('AWS::ECS::TaskDefinition', {
-      RequiresCompatibilities: ['FARGATE'],
-      Cpu: '512',
-      Memory: '2048',
-    });
+  it('does not create ECS cluster or Fargate task', () => {
+    template.resourceCountIs('AWS::ECS::Cluster', 0);
+    template.resourceCountIs('AWS::ECS::TaskDefinition', 0);
+  });
+
+  it('does not create a VPC', () => {
+    template.resourceCountIs('AWS::EC2::VPC', 0);
   });
 
   it('creates an EventBridge schedule', () => {
@@ -196,6 +220,12 @@ describe('AdminConstruct', () => {
   it('creates management API', () => {
     template.hasResourceProperties('AWS::ApiGatewayV2::Api', {
       Name: 'uniflow-management',
+    });
+  });
+
+  it('deploys UI assets to S3 via BucketDeployment', () => {
+    template.hasResourceProperties('Custom::CDKBucketDeployment', {
+      DistributionPaths: ['/*'],
     });
   });
 });

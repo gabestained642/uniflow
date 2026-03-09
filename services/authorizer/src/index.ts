@@ -8,7 +8,7 @@ import { createHash } from 'crypto';
 import { logger } from '@uniflow/logger';
 
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const TABLE_NAME = process.env.PROFILE_TABLE_NAME!;
+const TABLE_NAME = process.env.SOURCES_TABLE_NAME!;
 
 const log = logger.child({ service: 'authorizer' });
 
@@ -56,16 +56,15 @@ export async function handler(
     return { isAuthorized: true, context: { sourceId: cached.sourceId } };
   }
 
-  // Query DynamoDB for SOURCE# records matching writeKeyHash
+  // Query sources table by writeKeyHash GSI
   try {
     const result = await dynamo.send(
       new QueryCommand({
         TableName: TABLE_NAME,
-        IndexName: 'gsi1',
-        KeyConditionExpression: 'gsi1pk = :keyHash AND gsi1sk = :meta',
+        IndexName: 'writeKeyHashIndex',
+        KeyConditionExpression: 'writeKeyHash = :keyHash',
         ExpressionAttributeValues: {
-          ':keyHash': `WRITEKEY#${keyHash}`,
-          ':meta': 'META',
+          ':keyHash': keyHash,
         },
         Limit: 1,
       })

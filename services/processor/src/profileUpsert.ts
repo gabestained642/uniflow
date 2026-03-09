@@ -13,7 +13,7 @@ export async function upsertProfile(
   await dynamo.send(
     new UpdateCommand({
       TableName: tableName,
-      Key: { pk: `PROFILE#${userId}`, sk: 'META' },
+      Key: { userId, sortKey: 'META' },
       UpdateExpression:
         'SET updatedAt = :now, lastSeen = :now, #type = if_not_exists(#type, :type)',
       ExpressionAttributeNames: { '#type': 'type' },
@@ -38,7 +38,7 @@ export async function upsertProfile(
       await dynamo.send(
         new UpdateCommand({
           TableName: tableName,
-          Key: { pk: `PROFILE#${userId}`, sk: 'META' },
+          Key: { userId, sortKey: 'META' },
           UpdateExpression: `SET ${setExpressions.join(', ')}`,
           ExpressionAttributeNames: attrNames,
           ExpressionAttributeValues: attrValues,
@@ -52,8 +52,8 @@ export async function upsertProfile(
     new PutCommand({
       TableName: tableName,
       Item: {
-        pk: `PROFILE#${userId}`,
-        sk: `EVENT#${event.timestamp}#${event.messageId}`,
+        userId,
+        sortKey: `EVENT#${event.timestamp}#${event.messageId}`,
         type: event.type,
         event: 'event' in event ? event.event : undefined,
         properties: 'properties' in event ? event.properties : undefined,

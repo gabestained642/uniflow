@@ -1,3 +1,5 @@
+import { getCurrentToken } from './auth';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 interface RequestOptions {
@@ -7,12 +9,14 @@ interface RequestOptions {
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const token = options.token ?? await getCurrentToken();
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
-  if (options.token) {
-    headers['Authorization'] = `Bearer ${options.token}`;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
@@ -112,14 +116,15 @@ export const segments = {
 // --- Profiles ---
 
 export interface Profile {
-  pk: string;
+  userId: string;
+  sortKey: string;
   updatedAt?: string;
   lastSeen?: string;
   traits?: Record<string, unknown>;
 }
 
 export interface ProfileEvent {
-  sk: string;
+  sortKey: string;
   type: string;
   event?: string;
   timestamp: string;

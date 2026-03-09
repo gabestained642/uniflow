@@ -1,63 +1,73 @@
-import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as scheduler from 'aws-cdk-lib/aws-scheduler';
+import * as glue from 'aws-cdk-lib/aws-glue';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import * as scheduler from 'aws-cdk-lib/aws-scheduler';
+import * as path from 'path';
 import { Construct } from 'constructs';
 
 export interface AudienceConstructProps {
-  profileTable: dynamodb.Table;
+  segmentsTable: dynamodb.Table;
+  segmentMembersTable: dynamodb.Table;
   rawBucket: s3.Bucket;
+  processedBucket: s3.Bucket;
+  glueDatabase: glue.CfnDatabase;
 }
 
 export class AudienceConstruct extends Construct {
   constructor(scope: Construct, id: string, props: AudienceConstructProps) {
     super(scope, id);
 
-    // VPC for Fargate tasks
-    const vpc = new ec2.Vpc(this, 'AudienceVpc', {
-      maxAzs: 2,
-      natGateways: 1,
+    const stack = cdk.Stack.of(this);
+
+    // Glue IAM Role
+    const glueRole = new iam.Role(this, 'GlueJobRole', {
+      assumedBy: new iam.ServicePrincipal('glue.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSGlueServiceRole'),
+      ],
     });
 
-    // ECS Cluster
-    const cluster = new ecs.Cluster(this, 'AudienceCluster', { vpc });
+    props.rawBucket.grantRead(glueRole);
+    props.processedBucket.grantReadWrite(glueRole);
+    props.segmentsTable.grantReadData(glueRole);
+    props.segmentMembersTable.grantReadWriteData(glueRole);
 
-    // Task definition
-    const taskDef = new ecs.FargateTaskDefinition(this, 'AudienceTaskDef', {
-      memoryLimitMiB: 2048,
-      cpu: 512,
+    // Deploy PySpark script to S3
+    new s3deploy.BucketDeployment(this, 'DeployGlueScript', {
+      sources: [
+        s3deploy.Source.asset(
+          path.join(__dirname, '../../../services/audience-builder/glue')
+        ),
+      ],
+      destinationBucket: props.processedBucket,
+      destinationKeyPrefix: 'glue-scripts',
+      memoryLimit: 256,
     });
 
-    props.profileTable.grantReadWriteData(taskDef.taskRole);
-    props.rawBucket.grantRead(taskDef.taskRole);
-
-    // Athena query permissions
-    taskDef.taskRole.addToPrincipalPolicy(
-      new iam.PolicyStatement({
-        actions: [
-          'athena:StartQueryExecution',
-          'athena:GetQueryExecution',
-          'athena:GetQueryResults',
-          'glue:GetDatabase',
-          'glue:GetTable',
-          'glue:GetPartitions',
-        ],
-        resources: ['*'],
-      })
-    );
-
-    taskDef.addContainer('AudienceBuilder', {
-      image: ecs.ContainerImage.fromRegistry(
-        'public.ecr.aws/uniflow/audience-builder:latest'
-      ),
-      environment: {
-        PROFILE_TABLE_NAME: props.profileTable.tableName,
-        RAW_BUCKET_NAME: props.rawBucket.bucketName,
-        LOG_LEVEL: 'info',
+    // Glue Job
+    new glue.CfnJob(this, 'SegmentEvaluatorJob', {
+      name: 'uniflow-segment-evaluator',
+      role: glueRole.roleArn,
+      command: {
+        name: 'glueetl',
+        scriptLocation: `s3://${props.processedBucket.bucketName}/glue-scripts/segment_evaluator.py`,
+        pythonVersion: '3',
       },
-      logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'audience-builder' }),
+      glueVersion: '4.0',
+      workerType: 'G.1X',
+      numberOfWorkers: 2,
+      defaultArguments: {
+        '--SEGMENTS_TABLE_NAME': props.segmentsTable.tableName,
+        '--SEGMENT_MEMBERS_TABLE_NAME': props.segmentMembersTable.tableName,
+        '--RAW_BUCKET_NAME': props.rawBucket.bucketName,
+        '--PROCESSED_BUCKET_NAME': props.processedBucket.bucketName,
+        '--GLUE_DATABASE': 'uniflow',
+        '--job-bookmark-option': 'job-bookmark-enable',
+        '--enable-metrics': 'true',
+      },
     });
 
     // EventBridge Scheduler role
@@ -67,34 +77,27 @@ export class AudienceConstruct extends Construct {
 
     schedulerRole.addToPrincipalPolicy(
       new iam.PolicyStatement({
-        actions: ['ecs:RunTask'],
-        resources: [taskDef.taskDefinitionArn],
+        actions: ['glue:StartJobRun'],
+        resources: [
+          cdk.Arn.format(
+            { service: 'glue', resource: 'job', resourceName: 'uniflow-segment-evaluator' },
+            stack
+          ),
+        ],
       })
     );
-
-    taskDef.taskRole.grantPassRole(schedulerRole);
-    if (taskDef.executionRole) {
-      taskDef.executionRole.grantPassRole(schedulerRole);
-    }
 
     // Hourly audience evaluation schedule
     new scheduler.CfnSchedule(this, 'AudienceSchedule', {
       scheduleExpression: 'rate(1 hour)',
       flexibleTimeWindow: { mode: 'OFF' },
       target: {
-        arn: cluster.clusterArn,
+        arn: cdk.Arn.format(
+          { service: 'glue', resource: 'job', resourceName: 'uniflow-segment-evaluator' },
+          stack
+        ),
         roleArn: schedulerRole.roleArn,
-        ecsParameters: {
-          taskDefinitionArn: taskDef.taskDefinitionArn,
-          launchType: 'FARGATE',
-          networkConfiguration: {
-            awsvpcConfiguration: {
-              subnets: vpc.privateSubnets.map((s) => s.subnetId),
-              securityGroups: [],
-              assignPublicIp: 'DISABLED',
-            },
-          },
-        },
+        input: JSON.stringify({ JobName: 'uniflow-segment-evaluator' }),
       },
     });
   }

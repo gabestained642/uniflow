@@ -7,6 +7,7 @@ import {
   DynamoDBDocumentClient,
   PutCommand,
   QueryCommand,
+  ScanCommand,
   DeleteCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
@@ -15,7 +16,11 @@ import { createHash, randomUUID } from 'crypto';
 import { z } from 'zod';
 
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const TABLE_NAME = process.env.PROFILE_TABLE_NAME!;
+const PROFILES_TABLE = process.env.PROFILES_TABLE_NAME!;
+const SOURCES_TABLE = process.env.SOURCES_TABLE_NAME!;
+const DESTINATIONS_TABLE = process.env.DESTINATIONS_TABLE_NAME!;
+const SEGMENTS_TABLE = process.env.SEGMENTS_TABLE_NAME!;
+const SEGMENT_MEMBERS_TABLE = process.env.SEGMENT_MEMBERS_TABLE_NAME!;
 
 function json(statusCode: number, body: unknown): APIGatewayProxyStructuredResultV2 {
   return {
@@ -59,42 +64,42 @@ export async function handler(
   try {
     // Sources
     if (path === '/api/sources' && method === 'GET') {
-      return await listEntities('SOURCE');
+      return await listTable(SOURCES_TABLE);
     }
     if (path === '/api/sources' && method === 'POST') {
       return await createSource(event.body);
     }
     if (path.match(/^\/api\/sources\/[^/]+$/) && method === 'DELETE') {
       const id = path.split('/').pop()!;
-      return await deleteEntity('SOURCE', id);
+      return await deleteEntity(SOURCES_TABLE, id);
     }
 
     // Destinations
     if (path === '/api/destinations' && method === 'GET') {
-      return await listEntities('DEST');
+      return await listTable(DESTINATIONS_TABLE);
     }
     if (path === '/api/destinations' && method === 'POST') {
-      return await createEntity('DEST', DestinationSchema, event.body);
+      return await createEntity(DESTINATIONS_TABLE, DestinationSchema, event.body);
     }
     if (path.match(/^\/api\/destinations\/[^/]+$/) && method === 'PUT') {
       const id = path.split('/').pop()!;
-      return await updateEntity('DEST', DestinationSchema, id, event.body);
+      return await updateEntity(DESTINATIONS_TABLE, DestinationSchema, id, event.body);
     }
     if (path.match(/^\/api\/destinations\/[^/]+$/) && method === 'DELETE') {
       const id = path.split('/').pop()!;
-      return await deleteEntity('DEST', id);
+      return await deleteEntity(DESTINATIONS_TABLE, id);
     }
 
     // Segments
     if (path === '/api/segments' && method === 'GET') {
-      return await listEntities('SEGMENT');
+      return await listTable(SEGMENTS_TABLE);
     }
     if (path === '/api/segments' && method === 'POST') {
-      return await createEntity('SEGMENT', SegmentSchema, event.body);
+      return await createEntity(SEGMENTS_TABLE, SegmentSchema, event.body);
     }
     if (path.match(/^\/api\/segments\/[^/]+$/) && method === 'PUT') {
       const id = path.split('/').pop()!;
-      return await updateEntity('SEGMENT', SegmentSchema, id, event.body);
+      return await updateEntity(SEGMENTS_TABLE, SegmentSchema, id, event.body);
     }
     if (path.match(/^\/api\/segments\/[^/]+\/members$/) && method === 'GET') {
       const id = path.split('/')[3];
@@ -102,7 +107,7 @@ export async function handler(
     }
     if (path.match(/^\/api\/segments\/[^/]+$/) && method === 'DELETE') {
       const id = path.split('/').pop()!;
-      return await deleteEntity('SEGMENT', id);
+      return await deleteEntity(SEGMENTS_TABLE, id);
     }
 
     // Profile explorer
@@ -118,13 +123,9 @@ export async function handler(
   }
 }
 
-async function listEntities(prefix: string): Promise<APIGatewayProxyStructuredResultV2> {
+async function listTable(tableName: string): Promise<APIGatewayProxyStructuredResultV2> {
   const result = await dynamo.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'begins_with(pk, :prefix) AND sk = :meta',
-      ExpressionAttributeValues: { ':prefix': `${prefix}#`, ':meta': 'META' },
-    })
+    new ScanCommand({ TableName: tableName })
   );
   return json(200, { items: result.Items ?? [] });
 }
@@ -143,15 +144,11 @@ async function createSource(
 
   await dynamo.send(
     new PutCommand({
-      TableName: TABLE_NAME,
+      TableName: SOURCES_TABLE,
       Item: {
-        pk: `SOURCE#${id}`,
-        sk: 'META',
         id,
         ...parsed,
         writeKeyHash,
-        gsi1pk: `WRITEKEY#${writeKeyHash}`,
-        gsi1sk: 'META',
         createdAt: now,
         updatedAt: now,
       },
@@ -162,7 +159,7 @@ async function createSource(
 }
 
 async function createEntity(
-  prefix: string,
+  tableName: string,
   schema: z.ZodSchema,
   body: string | undefined
 ): Promise<APIGatewayProxyStructuredResultV2> {
@@ -174,10 +171,8 @@ async function createEntity(
 
   await dynamo.send(
     new PutCommand({
-      TableName: TABLE_NAME,
+      TableName: tableName,
       Item: {
-        pk: `${prefix}#${id}`,
-        sk: 'META',
         id,
         ...parsed,
         createdAt: now,
@@ -190,20 +185,20 @@ async function createEntity(
 }
 
 async function deleteEntity(
-  prefix: string,
+  tableName: string,
   id: string
 ): Promise<APIGatewayProxyStructuredResultV2> {
   await dynamo.send(
     new DeleteCommand({
-      TableName: TABLE_NAME,
-      Key: { pk: `${prefix}#${id}`, sk: 'META' },
+      TableName: tableName,
+      Key: { id },
     })
   );
   return json(200, { success: true });
 }
 
 async function updateEntity(
-  prefix: string,
+  tableName: string,
   schema: z.ZodSchema,
   id: string,
   body: string | undefined
@@ -231,8 +226,8 @@ async function updateEntity(
 
   const result = await dynamo.send(
     new UpdateCommand({
-      TableName: TABLE_NAME,
-      Key: { pk: `${prefix}#${id}`, sk: 'META' },
+      TableName: tableName,
+      Key: { id },
       UpdateExpression: `SET ${expressionParts.join(', ')}`,
       ExpressionAttributeNames: expressionNames,
       ExpressionAttributeValues: expressionValues,
@@ -248,11 +243,10 @@ async function getSegmentMembers(
 ): Promise<APIGatewayProxyStructuredResultV2> {
   const result = await dynamo.send(
     new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)',
+      TableName: SEGMENT_MEMBERS_TABLE,
+      KeyConditionExpression: 'segmentId = :sid',
       ExpressionAttributeValues: {
-        ':pk': `SEGMENT#${id}`,
-        ':prefix': 'MEMBER#',
+        ':sid': id,
       },
     })
   );
@@ -266,9 +260,9 @@ async function getProfile(
 ): Promise<APIGatewayProxyStructuredResultV2> {
   const result = await dynamo.send(
     new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'pk = :pk',
-      ExpressionAttributeValues: { ':pk': `PROFILE#${userId}` },
+      TableName: PROFILES_TABLE,
+      KeyConditionExpression: 'userId = :uid',
+      ExpressionAttributeValues: { ':uid': userId },
       Limit: 100,
     })
   );
@@ -277,8 +271,8 @@ async function getProfile(
     return json(404, { error: 'Profile not found' });
   }
 
-  const meta = result.Items.find((i) => i.sk === 'META');
-  const events = result.Items.filter((i) => i.sk.startsWith('EVENT#'));
+  const meta = result.Items.find((i) => i.sortKey === 'META');
+  const events = result.Items.filter((i) => (i.sortKey as string).startsWith('EVENT#'));
 
   return json(200, { profile: meta, events });
 }

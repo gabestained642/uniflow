@@ -8,7 +8,7 @@ import { Construct } from 'constructs';
 
 export interface ActivationConstructProps {
   destinationQueue: sqs.Queue;
-  profileTable: dynamodb.Table;
+  destinationsTable: dynamodb.Table;
 }
 
 export class ActivationConstruct extends Construct {
@@ -31,7 +31,7 @@ export class ActivationConstruct extends Construct {
         path.join(__dirname, '../../../services/connector/dist')
       ),
       environment: {
-        PROFILE_TABLE_NAME: props.profileTable.tableName,
+        DESTINATIONS_TABLE_NAME: props.destinationsTable.tableName,
         SECRETS_PREFIX: secretsPrefix,
         LOG_LEVEL: 'info',
       },
@@ -41,7 +41,7 @@ export class ActivationConstruct extends Construct {
     });
 
     // Permissions
-    props.profileTable.grantReadData(connectorFn);
+    props.destinationsTable.grantReadData(connectorFn);
 
     // Read secrets for destination credentials
     connectorFn.addToRolePolicy(

@@ -7,8 +7,6 @@ export const SegmentRuleSchema = z.object({
 });
 
 export const SegmentSchema = z.object({
-  pk: z.string(),
-  sk: z.literal('META'),
   id: z.string(),
   name: z.string(),
   rules: z.array(SegmentRuleSchema),

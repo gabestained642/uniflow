@@ -10,7 +10,7 @@ description: Complete list of AWS services used by Uniflow.
 | IaC | CloudFormation (CDK) | Infrastructure provisioning |
 | Ingest | API Gateway HTTP API | Event ingestion endpoint |
 | Compute | Lambda | Event processing, API handlers |
-| Compute | ECS Fargate | Audience builder (long-running) |
+| Compute | AWS Glue | Audience builder (PySpark segment evaluation) |
 | Streaming | Kinesis Data Streams | Event buffering (7-day retention) |
 | Streaming | Kinesis Firehose | S3 delivery |
 | Storage | DynamoDB | Profiles, events, identity graph |
@@ -34,7 +34,7 @@ For a low-traffic deployment (~10K events/day):
 | DynamoDB | ~$2.50 |
 | Kinesis | ~$3.60 |
 | S3 | ~$0.25 |
-| Fargate | ~$1.50 |
+| Glue | ~$0.44/DPU-hour |
 | **Total** | **~$8.70/mo** |
 
 Costs scale linearly with event volume. At 1M events/day, expect ~$80-120/month.

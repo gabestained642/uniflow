@@ -10,7 +10,7 @@ import { Construct } from 'constructs';
 
 export interface IngestionConstructProps {
   eventStream: kinesis.Stream;
-  profileTable: dynamodb.Table;
+  sourcesTable: dynamodb.Table;
 }
 
 export class IngestionConstruct extends Construct {
@@ -27,14 +27,14 @@ export class IngestionConstruct extends Construct {
         path.join(__dirname, '../../../services/authorizer/dist')
       ),
       environment: {
-        PROFILE_TABLE_NAME: props.profileTable.tableName,
+        SOURCES_TABLE_NAME: props.sourcesTable.tableName,
         LOG_LEVEL: 'info',
       },
       timeout: cdk.Duration.seconds(10),
       memorySize: 128,
     });
 
-    props.profileTable.grantReadData(authorizerFn);
+    props.sourcesTable.grantReadData(authorizerFn);
 
     const authorizer = new authorizers.HttpLambdaAuthorizer('WriteKeyAuthorizer', authorizerFn, {
       responseTypes: [authorizers.HttpLambdaResponseType.SIMPLE],

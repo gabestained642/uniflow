@@ -28,4 +28,4 @@ When deploying Uniflow to your AWS account:
 2. **Cognito** — use strong passwords and enable MFA for admin users
 3. **IAM** — CDK follows least-privilege; do not expand permissions unless necessary
 4. **Secrets Manager** — destination credentials are stored encrypted; do not log them
-5. **VPC** — the Fargate audience-builder runs in a private subnet; do not assign public IPs
+5. **Glue** — the audience-builder runs as a serverless AWS Glue job; no VPC or public IPs required

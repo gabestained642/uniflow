@@ -7,7 +7,7 @@ import { getConnector } from './registry';
 
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
-const TABLE_NAME = process.env.PROFILE_TABLE_NAME!;
+const TABLE_NAME = process.env.DESTINATIONS_TABLE_NAME!;
 
 const log = logger.child({ service: 'connector' });
 
@@ -34,8 +34,6 @@ async function getEnabledDestinations(): Promise<Destination[]> {
   const result = await dynamo.send(
     new ScanCommand({
       TableName: TABLE_NAME,
-      FilterExpression: 'begins_with(pk, :prefix) AND sk = :meta',
-      ExpressionAttributeValues: { ':prefix': 'DEST#', ':meta': 'META' },
     })
   );
 
