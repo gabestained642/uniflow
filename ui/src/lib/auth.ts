@@ -5,10 +5,21 @@ import {
   CognitoUserSession,
 } from 'amazon-cognito-identity-js';
 
-const userPool = new CognitoUserPool({
-  UserPoolId: process.env.NEXT_PUBLIC_USER_POOL_ID ?? '',
-  ClientId: process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID ?? '',
-});
+let _userPool: CognitoUserPool | null = null;
+
+function getUserPool(): CognitoUserPool {
+  if (!_userPool) {
+    const UserPoolId = process.env.NEXT_PUBLIC_USER_POOL_ID ?? '';
+    const ClientId = process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID ?? '';
+    if (!UserPoolId || !ClientId) {
+      throw new Error(
+        'NEXT_PUBLIC_USER_POOL_ID and NEXT_PUBLIC_USER_POOL_CLIENT_ID must be set',
+      );
+    }
+    _userPool = new CognitoUserPool({ UserPoolId, ClientId });
+  }
+  return _userPool;
+}
 
 let pendingUser: CognitoUser | null = null;
 
@@ -25,7 +36,7 @@ export function signIn(
   email: string,
   password: string,
 ): Promise<AuthResult | ChallengeResult> {
-  const user = new CognitoUser({ Username: email, Pool: userPool });
+  const user = new CognitoUser({ Username: email, Pool: getUserPool() });
   const details = new AuthenticationDetails({ Username: email, Password: password });
 
   return new Promise((resolve, reject) => {
@@ -68,13 +79,13 @@ export function completeNewPassword(newPassword: string): Promise<AuthResult> {
 }
 
 export function signOut(): void {
-  const user = userPool.getCurrentUser();
+  const user = getUserPool().getCurrentUser();
   if (user) user.signOut();
 }
 
 export function getCurrentToken(): Promise<string | null> {
   return new Promise((resolve) => {
-    const user = userPool.getCurrentUser();
+    const user = getUserPool().getCurrentUser();
     if (!user) return resolve(null);
 
     user.getSession((err: Error | null, session: CognitoUserSession | null) => {
@@ -86,7 +97,7 @@ export function getCurrentToken(): Promise<string | null> {
 
 export function getCurrentEmail(): Promise<string | null> {
   return new Promise((resolve) => {
-    const user = userPool.getCurrentUser();
+    const user = getUserPool().getCurrentUser();
     if (!user) return resolve(null);
 
     user.getSession((err: Error | null, session: CognitoUserSession | null) => {
